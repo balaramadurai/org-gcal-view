@@ -1,0 +1,27 @@
+# org-gcal-view
+
+A Google Calendar-inspired interface for Emacs, built on top of `org-agenda-files`.
+
+** Features
+:PROPERTIES:
+:CUSTOM_ID: features
+:END:
+- 📅 Day, week, and month views with Google Calendar keyboard shortcuts
+- 🗓️ Day view with time grid, lane-packed event blocks and hairlines
+- 📊 Month view with event dots
+- 🎯 Focus navigation between events / month day cells, mouse support
+- ⏱️ Clocking integration (total clocked time + live clock indicator)
+- ✏️ Event creation and editing straight from the calendar view
+
+** Usage
+:PROPERTIES:
+:CUSTOM_ID: usage
+:END:
+- ~M-x modern-emacs/gcal-day-view~ / ~modern-emacs/gcal-week-view~ / ~modern-emacs/gcal-month-view~
+- Global keys: ~C-c g d~ (day), ~C-c g w~ (week), ~C-c g m~ (month)
+- In an org-agenda buffer: ~C-c C-c~ (day), ~C-c C-w~ (week), ~C-c C-m~ (month)
+
+Inside the calendar buffer: ~d~/~w~/~m~ switch views, ~t~ jumps to today,
+~j~/~k~/~n~/~p~/~f~/~b~ and the arrow keys move forward/back, ~<up>~/~<down>~ move
+focus between events, ~TAB~ previews an event in a split, ~RET~ opens it,
+~/~ searches titles, ~i~/~o~ clock in/out, ~c~ creates a new event, ~q~ quits.
