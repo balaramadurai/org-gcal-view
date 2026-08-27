@@ -115,6 +115,96 @@ file, and run BODY."
   (should (null (org-gcal-view--format-clocked nil))))
 
 ;; ------------------------------------------------------------
+;; Category colors
+;; ------------------------------------------------------------
+
+(ert-deftest org-gcal-view-test-contrast-fg-dark-on-light ()
+  ;; A light background gets the dark text color.
+  (should (equal (org-gcal-view--contrast-fg "#ffffff") "#1a1a2e"))
+  (should (equal (org-gcal-view--contrast-fg "#aed581") "#1a1a2e")))
+
+(ert-deftest org-gcal-view-test-contrast-fg-light-on-dark ()
+  ;; A dark background gets the light text color.
+  (should (equal (org-gcal-view--contrast-fg "#000000") "#ffffff"))
+  (should (equal (org-gcal-view--contrast-fg "#3b82f6") "#ffffff")))
+
+(ert-deftest org-gcal-view-test-category-color-lookup ()
+  (let ((org-gcal-view-category-colors '(("Work" . "#3b82f6"))))
+    (should (equal (org-gcal-view--category-color "Work") "#3b82f6"))
+    (should (null (org-gcal-view--category-color "Personal")))
+    (should (null (org-gcal-view--category-color nil)))))
+
+(ert-deftest org-gcal-view-test-kind-block-face-prefers-category-color ()
+  (let ((org-gcal-view-category-colors '(("Family" . "#aed581"))))
+    ;; A configured category overrides the tag-based kind face.
+    (should (equal (org-gcal-view--kind-block-face 'work nil "Family")
+                   (list :background "#aed581" :foreground "#1a1a2e")))
+    ;; No configured color for this category: falls back to KIND.
+    (should (eq (org-gcal-view--kind-block-face 'work nil "Unmapped")
+               'org-gcal-view-blk-work))
+    ;; A live clock always wins, even over a configured category color.
+    (should (eq (org-gcal-view--kind-block-face 'work t "Family")
+               'org-gcal-view-clocking))))
+
+(ert-deftest org-gcal-view-test-day-view-uses-category-color ()
+  (let ((org-gcal-view-category-colors '(("Entrepreneur" . "#4CAF50"))))
+    (org-gcal-view-test-with-agenda-file
+        ;; A non-hour-aligned start avoids the hairline face that
+        ;; `org-gcal-view--render-day' layers on top of hour rows,
+        ;; which would otherwise turn `face' into a list of two faces.
+        "* Pitch\n  SCHEDULED: <2026-08-27 Thu 09:30-10:00>\n  :PROPERTIES:\n  :CATEGORY: Entrepreneur\n  :END:\n"
+      (org-gcal-view-day-view "2026-08-27")
+      (with-current-buffer org-gcal-view-buffer-name
+        ;; The target position lands on the block's leading stripe
+        ;; character (background-only face); the block body's own
+        ;; face, one character further in, carries the full
+        ;; background+foreground category color.
+        (goto-char (1+ (caar (org-gcal-view--event-targets))))
+        (should (equal (get-text-property (point) 'face)
+                       (list :background "#4CAF50" :foreground "#1a1a2e")))))))
+
+;; ------------------------------------------------------------
+;; Work / Personal filter ("P")
+;; ------------------------------------------------------------
+
+(ert-deftest org-gcal-view-test-category-passes-filter-p ()
+  (let ((org-gcal-view-work-categories '("Work" "Entrepreneur")))
+    (let ((org-gcal-view-work-filter-state nil))
+      (should (org-gcal-view--category-passes-filter-p "Work"))
+      (should (org-gcal-view--category-passes-filter-p "Family")))
+    (let ((org-gcal-view-work-filter-state 'work))
+      (should (org-gcal-view--category-passes-filter-p "Work"))
+      (should-not (org-gcal-view--category-passes-filter-p "Family")))
+    (let ((org-gcal-view-work-filter-state 'personal))
+      (should-not (org-gcal-view--category-passes-filter-p "Work"))
+      (should (org-gcal-view--category-passes-filter-p "Family")))))
+
+(ert-deftest org-gcal-view-test-toggle-work-personal-cycles-and-filters ()
+  (let ((org-gcal-view-work-categories '("Work"))
+        (org-gcal-view-work-filter-state nil))
+    (org-gcal-view-test-with-agenda-file
+        "* Standup\n  SCHEDULED: <2026-08-27 Thu 09:00-10:00>\n  :PROPERTIES:\n  :CATEGORY: Work\n  :END:\n* Birthday\n  SCHEDULED: <2026-08-27 Thu 11:00-12:00>\n  :PROPERTIES:\n  :CATEGORY: Family\n  :END:\n"
+      (org-gcal-view-day-view "2026-08-27")
+      (with-current-buffer org-gcal-view-buffer-name
+        (should (= (length (org-gcal-view--event-targets)) 2))
+        (org-gcal-view-toggle-work-personal)
+        (should (eq org-gcal-view-work-filter-state 'work))
+        (should (= (length (org-gcal-view--event-targets)) 1))
+        (should (org-gcal-view-test--line-at "Standup"))
+        (should-not (org-gcal-view-test--line-at "Birthday"))
+        (org-gcal-view-toggle-work-personal)
+        (should (eq org-gcal-view-work-filter-state 'personal))
+        (should-not (org-gcal-view-test--line-at "Standup"))
+        (should (org-gcal-view-test--line-at "Birthday"))
+        (org-gcal-view-toggle-work-personal)
+        (should (null org-gcal-view-work-filter-state))
+        (should (= (length (org-gcal-view--event-targets)) 2))))))
+
+(ert-deftest org-gcal-view-test-toggle-work-personal-requires-categories ()
+  (let ((org-gcal-view-work-categories nil))
+    (should-error (org-gcal-view-toggle-work-personal) :type 'user-error)))
+
+;; ------------------------------------------------------------
 ;; Org-buffer-backed event collection
 ;; ------------------------------------------------------------
 

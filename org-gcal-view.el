@@ -68,6 +68,30 @@
   :type 'boolean
   :group 'org-gcal-view)
 
+(defcustom org-gcal-view-category-colors nil
+  "Alist mapping an Org CATEGORY value to a hex background color.
+When an event's CATEGORY (as resolved by `org-entry-get', so it
+follows the normal #+CATEGORY:/property inheritance) has an entry
+here, that color is used for the event's block and stripe instead of
+the tag-based work/life/habit/default faces, with a readable
+black/white foreground chosen automatically for contrast.  Categories
+with no entry here keep using the tag-based faces.
+
+Example, matching a set of Org file categories:
+
+  ((\"Work\" . \"#3b82f6\")
+   (\"Family\" . \"#aed581\")
+   (\"Entrepreneur\" . \"#4CAF50\"))"
+  :type '(alist :key-type string :value-type color)
+  :group 'org-gcal-view)
+
+(defcustom org-gcal-view-work-categories nil
+  "CATEGORY values treated as Work by `org-gcal-view-toggle-work-personal'.
+Any CATEGORY not in this list counts as Personal.  Leave nil to
+disable the \"P\" work/personal/all cycle (it then does nothing)."
+  :type '(repeat string)
+  :group 'org-gcal-view)
+
 ;; ============================================================
 ;; * Faces - Google Calendar inspired
 ;; ============================================================
@@ -209,6 +233,10 @@ Underline-only so it never covers events like a band.")
 (defvar org-gcal-view-buffer-name "*Google Calendar*"
   "Name of the Google Calendar buffer.")
 
+(defvar org-gcal-view-work-filter-state nil
+  "Current work/personal filter: nil, `work', or `personal'.
+Cycled by `org-gcal-view-toggle-work-personal', bound to \"P\".")
+
 ;; ============================================================
 ;; * Timestamp Parsing
 ;; ============================================================
@@ -316,11 +344,22 @@ to a 60 minute duration, never shorter than 30 minutes."
               (buffer-file-name (marker-buffer org-clock-marker)))
        (= pos (marker-position org-clock-marker))))
 
+(defun org-gcal-view--category-passes-filter-p (category)
+  "Return non-nil if CATEGORY should be shown under the current
+`org-gcal-view-work-filter-state'.  Membership in
+`org-gcal-view-work-categories' decides Work vs. Personal, mirroring
+the semantics of the analogous org-agenda \"P\" toggle: everything NOT
+listed there counts as Personal."
+  (pcase org-gcal-view-work-filter-state
+    ('work (member category org-gcal-view-work-categories))
+    ('personal (not (member category org-gcal-view-work-categories)))
+    (_ t)))
+
 (defun org-gcal-view--blocks-in-file (file dates)
   "Collect event blocks from FILE for any date string in DATES.
 Each block is \(START-MINS END-MINS TITLE KIND FILE POS
-CLOCKED-MINUTES LIVE-P DATE ALL-DAY-P), sorted by start time.
-Sources checked per entry: SCHEDULED, DEADLINE, then the first
+CLOCKED-MINUTES LIVE-P DATE ALL-DAY-P CATEGORY), sorted by start
+time.  Sources checked per entry: SCHEDULED, DEADLINE, then the first
 active timestamp in the body.
 
 Visits FILE with `find-file-noselect' rather than re-reading it into
@@ -360,8 +399,11 @@ cheaper to reach for large files."
                                                    (nth 0 parsed)
                                                    (nth 1 parsed)
                                                    (nth 2 parsed))))
-                             (when (member date-str dates)
+                             (when (and (member date-str dates)
+                                        (org-gcal-view--category-passes-filter-p
+                                         (org-entry-get pos "CATEGORY")))
                                (let* ((title (or (org-entry-get pos "ITEM") "?"))
+                                      (category (org-entry-get pos "CATEGORY"))
                                       (kind (org-gcal-view--timestamp-kind
                                              (ignore-errors (org-get-tags pos))))
                                       (clocked (if org-gcal-view-show-clocking
@@ -372,7 +414,7 @@ cheaper to reach for large files."
                                       (live (org-gcal-view--live-clock-p file pos)))
                                  (push (list (nth 3 parsed) (nth 4 parsed)
                                              title kind file pos clocked live
-                                             date-str (nth 5 parsed))
+                                             date-str (nth 5 parsed) category)
                                        blocks)))))))))
                  (goto-char match-end))))))))
     (sort blocks (lambda (a b) (< (car a) (car b))))))
@@ -480,12 +522,13 @@ DATE is the day (YYYY-MM-DD) this chip is shown under."
          (file (nth 4 b))
          (pos (nth 5 b))
          (live (nth 7 b))
+         (category (nth 10 b))
          (txt (concat
                (propertize
-                " " 'face (org-gcal-view--kind-stripe-face kind))
+                " " 'face (org-gcal-view--kind-stripe-face kind category))
                (propertize
                 (org-gcal-view--truncate title (max 1 (1- width)))
-                'face (org-gcal-view--kind-block-face kind live)
+                'face (org-gcal-view--kind-block-face kind live category)
                 'help-echo (format "%s\nall-day%s"
                                    title
                                    (if live " [clocking]" ""))))))
@@ -542,6 +585,7 @@ carries the full name and details."
          (clocked-mins (nth 6 b))
          (clocked (org-gcal-view--format-clocked clocked-mins))
          (live (nth 7 b))
+         (category (nth 10 b))
          (wide (>= lw 24))
          (body
           (when top
@@ -566,14 +610,14 @@ carries the full name and details."
                       (pcase kind
                         ('work "\nwork") ('life "\nlife")
                         ('habit "\nhabit") (_ ""))))
-         (stripe-face (org-gcal-view--kind-stripe-face kind))
+         (stripe-face (org-gcal-view--kind-stripe-face kind category))
          (stripe (propertize " " 'face stripe-face))
          (txt (concat stripe
                       (propertize
                        (concat " "
                                (org-gcal-view--truncate
                                 body (- lw 2)))
-                       'face (org-gcal-view--kind-block-face kind live)
+                       'face (org-gcal-view--kind-block-face kind live category)
                        'help-echo tip))))
     (add-text-properties 0 (length txt)
                          (list 'gcal-file file 'gcal-pos pos
@@ -794,23 +838,49 @@ so it never covers events."
     (org-gcal-view--current-time-overlay
      today (+ 3 max-ad) slot h0 h1)))
 
-(defun org-gcal-view--kind-block-face (kind live)
-  "Return block face for KIND; LIVE clocking gets the clocking face."
-  (if live
-      'org-gcal-view-clocking
-    (pcase kind
-      ('work 'org-gcal-view-blk-work)
-      ('life 'org-gcal-view-blk-life)
-      ('habit 'org-gcal-view-blk-habit)
-      (_ 'org-gcal-view-blk-default))))
+(defun org-gcal-view--contrast-fg (hex)
+  "Return \"#1a1a2e\" or \"#ffffff\", whichever reads better on
+background HEX (a \"#rrggbb\" string).  Same relative-luminance
+formula as the org-calendar-web frontend, so category colors look
+consistent between the two."
+  (let* ((h (string-remove-prefix "#" hex))
+         (r (string-to-number (substring h 0 2) 16))
+         (g (string-to-number (substring h 2 4) 16))
+         (b (string-to-number (substring h 4 6) 16))
+         (luminance (/ (+ (* 0.299 r) (* 0.587 g) (* 0.114 b)) 255.0)))
+    (if (> luminance 0.5) "#1a1a2e" "#ffffff")))
 
-(defun org-gcal-view--kind-stripe-face (kind)
-  "Return left stripe face for KIND."
-  (pcase kind
-    ('work 'org-gcal-view-stripe-work)
-    ('life 'org-gcal-view-stripe-life)
-    ('habit 'org-gcal-view-stripe-habit)
-    (_ 'org-gcal-view-stripe-default)))
+(defun org-gcal-view--category-color (category)
+  "Return the configured hex color for CATEGORY, or nil."
+  (and category
+       (cdr (assoc category org-gcal-view-category-colors))))
+
+(defun org-gcal-view--kind-block-face (kind live &optional category)
+  "Return block face for KIND; LIVE clocking gets the clocking face.
+When CATEGORY has a color in `org-gcal-view-category-colors', it
+takes priority over the KIND-based face (except LIVE, which always
+wins so an active clock stays visible)."
+  (let ((color (and (not live) (org-gcal-view--category-color category))))
+    (cond
+     (live 'org-gcal-view-clocking)
+     (color (list :background color :foreground (org-gcal-view--contrast-fg color)))
+     (t (pcase kind
+          ('work 'org-gcal-view-blk-work)
+          ('life 'org-gcal-view-blk-life)
+          ('habit 'org-gcal-view-blk-habit)
+          (_ 'org-gcal-view-blk-default))))))
+
+(defun org-gcal-view--kind-stripe-face (kind &optional category)
+  "Return left stripe face for KIND, or CATEGORY's configured color
+if any (see `org-gcal-view--kind-block-face')."
+  (let ((color (org-gcal-view--category-color category)))
+    (if color
+        (list :background color)
+      (pcase kind
+        ('work 'org-gcal-view-stripe-work)
+        ('life 'org-gcal-view-stripe-life)
+        ('habit 'org-gcal-view-stripe-habit)
+        (_ 'org-gcal-view-stripe-default)))))
 
 (defun org-gcal-view--block-tip (b)
   "Return the help-echo tooltip text for block B."
@@ -843,7 +913,7 @@ shows once per block, on its first visible row."
     (if b
         (concat (propertize
                  " " 'face
-                 (org-gcal-view--kind-stripe-face (nth 3 b)))
+                 (org-gcal-view--kind-stripe-face (nth 3 b) (nth 10 b)))
                 (propertize
                  (concat " "
                          (if (not (gethash b titled))
@@ -853,7 +923,7 @@ shows once per block, on its first visible row."
                                 (or (nth 2 b) "") (- col-width 2)))
                            (make-string (- col-width 2) ?\s)))
                  'face (org-gcal-view--kind-block-face
-                        (nth 3 b) (nth 7 b))
+                        (nth 3 b) (nth 7 b) (nth 10 b))
                  'help-echo (org-gcal-view--block-tip b)
                  'gcal-file (nth 4 b)
                  'gcal-pos (nth 5 b)
@@ -1071,6 +1141,26 @@ should be a \"YYYY-MM-DD\" string."
   "Refresh the current view."
   (interactive)
   (org-gcal-view-switch-to-date org-gcal-view-current-date))
+
+(defun org-gcal-view-toggle-work-personal ()
+  "Cycle the calendar view: all events -> Work only -> Personal
+only -> all.  Mirrors the org-agenda \"P\" toggle: an event's
+CATEGORY is Work if it is a member of `org-gcal-view-work-categories',
+Personal otherwise.  Bound to \"P\"."
+  (interactive)
+  (unless org-gcal-view-work-categories
+    (user-error "Set org-gcal-view-work-categories to use the Work/Personal filter"))
+  (setq org-gcal-view-work-filter-state
+        (pcase org-gcal-view-work-filter-state
+          ('nil 'work)
+          ('work 'personal)
+          ('personal nil)))
+  (org-gcal-view-refresh)
+  (message "Calendar filter: %s"
+           (pcase org-gcal-view-work-filter-state
+             ('work "Work only")
+             ('personal "Personal only (excluding Work)")
+             (_ "showing all"))))
 
 ;; ============================================================
 ;; * Focus: Point, Arrows and Mouse
@@ -1573,6 +1663,8 @@ timestamp, then the view is refreshed."
     (define-key map [up] 'org-gcal-view-previous-focus)
     ;; View refresh
     (define-key map (kbd "g") 'org-gcal-view-refresh)
+    ;; Filter: cycle Work / Personal / all
+    (define-key map (kbd "P") 'org-gcal-view-toggle-work-personal)
     ;; Event actions
     (define-key map (kbd "RET") 'org-gcal-view-open-at-point)
     (define-key map (kbd "TAB") 'org-gcal-view-preview-event)

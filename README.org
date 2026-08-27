@@ -12,6 +12,24 @@ A Google Calendar-inspired interface for Emacs, built on top of `org-agenda-file
 - 🎯 Focus navigation between events / month day cells, mouse support
 - ⏱️ Clocking integration (total clocked time + live clock indicator)
 - ✏️ Event creation and editing straight from the calendar view
+- 🎨 Per-CATEGORY block colors, and a Work/Personal/all filter cycle
+
+** Configuration
+:PROPERTIES:
+:CUSTOM_ID: configuration
+:END:
+- ~org-gcal-view-category-colors~: alist of Org CATEGORY -> hex color.
+  When an event's CATEGORY has an entry here, that color is used for its
+  block and stripe (with an automatically chosen readable text color)
+  instead of the default tags-based work/life/habit coloring.
+  #+begin_src emacs-lisp
+  (setq org-gcal-view-category-colors
+        '(("Work" . "#3b82f6")
+          ("Family" . "#aed581")
+          ("Entrepreneur" . "#4CAF50")))
+  #+end_src
+- ~org-gcal-view-work-categories~: list of CATEGORY values that count as
+  Work for the ~P~ filter below; every other CATEGORY counts as Personal.
 
 ** Usage
 :PROPERTIES:
@@ -28,4 +46,5 @@ forward/back a day/week/month. ~<up>~/~<down>~ move focus between events
 instead move focus to an event on the adjacent day, while in day/month view
 they move forward/back like ~n~/~p~. ~TAB~ previews an event in a split,
 ~RET~ opens it, ~/~ searches titles, ~i~/~o~ clock in/out, ~c~ creates a new
-event, ~q~ quits.
+event, ~P~ cycles the Work/Personal/all filter (see
+~org-gcal-view-work-categories~ above), ~q~ quits.
