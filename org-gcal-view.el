@@ -1247,16 +1247,42 @@ Each target is \(BUFFER-POS nil nil DATE)."
     (cl-loop for i from 0 below 7
              collect (org-gcal-view--date-add-days start i))))
 
-(defun org-gcal-view--focus-at (pos label)
-  "Move point to POS and pulse the line.  LABEL, when non-nil, is
-shown in the echo area.  Scrolling is left to Emacs's normal
-minimal-scroll behavior, so only the cursor moves, not the window."
-  (goto-char pos)
+(defun org-gcal-view--outline-path-message (file pos)
+  "Return the breadcrumb \"FILE-BASENAME/Heading1/Heading2\" for the
+entry at POS in FILE - the same message org-agenda shows in the echo
+area when the cursor moves between entries (`org-agenda-next-line'
+and friends call `org-agenda-do-context-action', which calls
+`org-display-outline-path').  Excludes the entry's own heading,
+matching org-agenda: its title is already visible on the agenda line
+there, just as it is on the calendar block here."
+  (when (and file pos (file-exists-p file))
+    (with-current-buffer (find-file-noselect file)
+      (org-with-point-at pos
+        (org-format-outline-path
+         (org-get-outline-path)
+         (1- (frame-width))
+         (file-name-nondirectory file)
+         "/")))))
+
+(defun org-gcal-view--focus-at (target)
+  "Move point to TARGET's buffer position and pulse the line.
+TARGET is a tuple from `org-gcal-view--focus-targets' \(POS FILE
+ENTRY-POS TITLE ...).  Shows the org-agenda-style outline-path
+breadcrumb (see `org-gcal-view--outline-path-message') when FILE and
+ENTRY-POS are set; falls back to TITLE - a DATE string, for month
+view's day-cell targets, which carry no FILE/ENTRY-POS - otherwise.
+Scrolling is left to Emacs's normal minimal-scroll behavior, so only
+the cursor moves, not the window."
+  (goto-char (car target))
   ;; The mode hides the cursor; reveal it once the user navigates.
   (setq-local cursor-type 'bar)
   (when (fboundp 'pulse-momentary-highlight-one-line)
     (pulse-momentary-highlight-one-line (point)))
-  (when label (message "%s" label)))
+  (let ((file (nth 1 target)) (entry-pos (nth 2 target)))
+    (if (and file entry-pos)
+        (when-let ((msg (org-gcal-view--outline-path-message file entry-pos)))
+          (message "%s" msg))
+      (when (nth 3 target) (message "%s" (nth 3 target))))))
 
 (defun org-gcal-view-next-focus (&optional backward)
   "Move focus to the next event (or day cell in month view).
@@ -1287,9 +1313,7 @@ In week view, stays within the same day as point."
                 (if backward (reverse targets) targets))))
     (cond
      (next
-      (org-gcal-view--focus-at
-       (car next)
-       (or (nth 3 next) "")))
+      (org-gcal-view--focus-at next))
      (backward
       (user-error "At first %s"
                   (if (eq org-gcal-view-current-view 'month)
@@ -1347,7 +1371,7 @@ Bound to <right>/<left> in week view."
                          a b))
                    day-targets)
                 (car day-targets))))
-        (org-gcal-view--focus-at (car chosen) (or (nth 3 chosen) ""))))))
+        (org-gcal-view--focus-at chosen)))))
 
 (defun org-gcal-view-previous-day-focus ()
   "Move focus to an event on the previous day.  Bound to <left>."
@@ -1401,7 +1425,7 @@ side in lanes."
       (if (or (null next-idx) (< next-idx 0) (>= next-idx (length targets)))
           (user-error "At %s event on this row" (if backward "first" "last"))
         (let ((tgt (nth next-idx targets)))
-          (org-gcal-view--focus-at (car tgt) (or (nth 3 tgt) "")))))))
+          (org-gcal-view--focus-at tgt))))))
 
 (defun org-gcal-view--row-has-multiple-events-p ()
   "Return non-nil if point is on an event and its row has others."
@@ -1562,7 +1586,7 @@ Selecting a result opens that day and focuses the event."
                                 (get-text-property (point) 'gcal-pos))
                           target)
                (org-gcal-view--focus-at
-                (point) (or (nth 2 b) "")))))))))
+                (list (point) (nth 4 b) (nth 5 b) (nth 2 b))))))))))
 
 ;; ============================================================
 ;; * Event Actions (Clocking Support)

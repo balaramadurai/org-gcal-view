@@ -395,5 +395,50 @@ file, and run BODY."
         (org-gcal-view-save-buffers))
       (should-not (buffer-modified-p)))))
 
+;; ------------------------------------------------------------
+;; Org-agenda-style outline-path echo message
+;; ------------------------------------------------------------
+
+(ert-deftest org-gcal-view-test-outline-path-message-includes-file-and-headings ()
+  ;; Mirrors what `org-agenda-do-context-action' shows for the same
+  ;; entry in org-agenda: "basename.org/Parent/Child", excluding the
+  ;; entry's own heading (its title is already visible on the block).
+  (org-gcal-view-test-with-agenda-file
+      "* Parent\n** Child\n   <2026-08-27 Thu 09:00-10:00>\n"
+    (let* ((blocks (org-gcal-view--collect-blocks "2026-08-27"))
+           (b (car blocks))
+           (msg (org-gcal-view--outline-path-message (nth 4 b) (nth 5 b))))
+      (should (string-match-p (regexp-quote (file-name-nondirectory file)) msg))
+      (should (string-match-p "Parent" msg))
+      (should-not (string-match-p "Child" msg)))))
+
+(ert-deftest org-gcal-view-test-focus-at-shows-outline-path-not-bare-title ()
+  (org-gcal-view-test-with-agenda-file
+      "* Meetings\n** Standup\n   <2026-08-27 Thu 09:00-10:00>\n"
+    (org-gcal-view-day-view "2026-08-27")
+    (with-current-buffer org-gcal-view-buffer-name
+      (let ((messages nil))
+        (cl-letf (((symbol-function 'message)
+                   (lambda (fmt &rest args) (push (apply #'format fmt args) messages))))
+          (org-gcal-view--focus-at (car (org-gcal-view--event-targets))))
+        (should (string-match-p "Meetings" (car messages)))
+        (should-not (string= (car messages) "Standup"))))))
+
+(ert-deftest org-gcal-view-test-month-view-focus-still-shows-date ()
+  ;; Month-view day-cell targets carry no FILE/ENTRY-POS, so
+  ;; `org-gcal-view--focus-at' must fall back to the target's own
+  ;; label (the date) instead of trying to build an outline path.
+  (org-gcal-view-test-with-agenda-file
+      "* Event\n  <2026-08-15 Sat 09:00-10:00>\n"
+    (org-gcal-view-month-view "2026-08-01")
+    (with-current-buffer org-gcal-view-buffer-name
+      (let ((messages nil)
+            (cell (cl-find-if (lambda (tgt) (equal (nth 3 tgt) "2026-08-15"))
+                              (org-gcal-view--date-cell-targets))))
+        (cl-letf (((symbol-function 'message)
+                   (lambda (fmt &rest args) (push (apply #'format fmt args) messages))))
+          (org-gcal-view--focus-at cell))
+        (should (equal (car messages) "2026-08-15"))))))
+
 (provide 'org-gcal-view-test)
 ;;; org-gcal-view-test.el ends here

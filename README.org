@@ -9,7 +9,9 @@ A Google Calendar-inspired interface for Emacs, built on top of `org-agenda-file
 - 📅 Day, week, and month views with Google Calendar keyboard shortcuts
 - 🗓️ Day view with time grid, lane-packed event blocks and hairlines
 - 📊 Month view with event dots
-- 🎯 Focus navigation between events / month day cells, mouse support
+- 🎯 Focus navigation between events / month day cells, mouse support -
+  moving between events shows the same file/outline-path breadcrumb
+  org-agenda shows in the echo area, e.g. ~spirelia.org/Meetings~
 - ⏱️ Clocking integration (total clocked time + live clock indicator)
 - ✏️ Event creation and editing straight from the calendar view
 - 🎨 Per-CATEGORY block colors, and a Work/Personal/all filter cycle
