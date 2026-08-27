@@ -378,5 +378,22 @@ file, and run BODY."
         (org-gcal-view-jump-to-date))
       (should (equal org-gcal-view-current-date "2026-09-15")))))
 
+;; ------------------------------------------------------------
+;; Save buffers ("s")
+;; ------------------------------------------------------------
+
+(ert-deftest org-gcal-view-test-save-buffers ()
+  (org-gcal-view-test-with-agenda-file
+      "* Event\n  <2026-08-27 Thu 09:00-10:00>\n"
+    (org-gcal-view-day-view "2026-08-27")
+    ;; Dirty the agenda file's buffer, then confirm "s" flushes it.
+    (with-current-buffer (find-file-noselect file)
+      (goto-char (point-max))
+      (insert "\n* Untitled\n")
+      (should (buffer-modified-p))
+      (with-current-buffer org-gcal-view-buffer-name
+        (org-gcal-view-save-buffers))
+      (should-not (buffer-modified-p)))))
+
 (provide 'org-gcal-view-test)
 ;;; org-gcal-view-test.el ends here

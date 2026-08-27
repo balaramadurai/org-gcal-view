@@ -1633,6 +1633,14 @@ timestamp, then the view is refreshed."
     (org-gcal-view-refresh)
     (message "Created event: %s %s-%s in %s" title start end file)))
 
+(defun org-gcal-view-save-buffers ()
+  "Save all open Org buffers.  Bound to \"s\": editing events (clock
+in/out, create, edit) touches agenda files without saving them, so
+this gives an explicit, on-demand way to flush those edits to disk
+without leaving the calendar."
+  (interactive)
+  (org-save-all-org-buffers))
+
 ;; ============================================================
 ;; * Keymap - Google Calendar Shortcuts
 ;; ============================================================
@@ -1677,6 +1685,8 @@ timestamp, then the view is refreshed."
     ;; Clocking
     (define-key map (kbd "i") 'org-gcal-view-clock-in)
     (define-key map (kbd "o") 'org-gcal-view-clock-out)
+    ;; Save
+    (define-key map (kbd "s") 'org-gcal-view-save-buffers)
     ;; Quit
     (define-key map (kbd "q") 'org-gcal-view-quit)
     map)

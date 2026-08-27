@@ -47,4 +47,5 @@ instead move focus to an event on the adjacent day, while in day/month view
 they move forward/back like ~n~/~p~. ~TAB~ previews an event in a split,
 ~RET~ opens it, ~/~ searches titles, ~i~/~o~ clock in/out, ~c~ creates a new
 event, ~P~ cycles the Work/Personal/all filter (see
-~org-gcal-view-work-categories~ above), ~q~ quits.
+~org-gcal-view-work-categories~ above), ~s~ saves all Org buffers,
+~q~ quits.
