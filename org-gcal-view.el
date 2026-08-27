@@ -522,13 +522,17 @@ Returns the number of lines inserted (0 if no blocks)."
 ;; * Day View Rendering
 ;; ============================================================
 
-(defun org-gcal-view--render-block-cell (b mins lw &optional grid-mins date)
-  "Render one grid cell for block B at slot minute MINS.
-LW is the lane width; GRID-MINS is the first minute shown by the
-grid (blocks starting before it are clipped).  DATE is the day
-(YYYY-MM-DD) this cell belongs to.  The title shows once, on the
-first visible row of the block - later rows stay as a solid
-colored bar.  help-echo carries the full name and details."
+(defun org-gcal-view--render-block-cell (b lw top date)
+  "Render one grid cell for block B.
+LW is the lane width.  TOP is non-nil when this is the first row at
+which B is being rendered - the caller decides this by identity
+across the whole render pass, since B's actual start time need not
+land on a slot boundary (a row's clock time comparing equal to B's
+exact start minute would otherwise never be true, leaving B's title
+blank for its entire duration).  DATE is the day (YYYY-MM-DD) this
+cell belongs to.  The title shows once, on the first visible row of
+the block - later rows stay as a solid colored bar.  help-echo
+carries the full name and details."
   (let* ((start-mins (nth 0 b))
          (end-mins (nth 1 b))
          (title (or (nth 2 b) ""))
@@ -538,9 +542,6 @@ colored bar.  help-echo carries the full name and details."
          (clocked-mins (nth 6 b))
          (clocked (org-gcal-view--format-clocked clocked-mins))
          (live (nth 7 b))
-         ;; First *visible* row: blocks starting before the grid top
-         ;; are clipped, so their first rendered row must carry text.
-         (top (= mins (max start-mins (or grid-mins 0))))
          (wide (>= lw 24))
          (body
           (when top
@@ -610,7 +611,10 @@ count adapts so every event stays visible."
              'face 'org-gcal-view-day-title)
             "\n\n")
     ;; All-day events sit between the title and the time grid
-    (let ((ad-lines (org-gcal-view--render-allday allday avail date-str)))
+    (let ((ad-lines (org-gcal-view--render-allday allday avail date-str))
+          ;; Tracks, by block identity, which blocks have already had
+          ;; their title row rendered - see `org-gcal-view--render-block-cell'.
+          (titled (make-hash-table :test 'eq)))
       (let ((slot-idx s0))
         (while (< slot-idx s1)
           (let* ((mins (* slot-idx slot))
@@ -629,8 +633,10 @@ count adapts so every event stays visible."
                                             (< mins (nth 1 x))))
                                      lane)))
                              (if b
-                                 (org-gcal-view--render-block-cell
-                                  b mins lw (* h0 60) date-str)
+                                 (let ((top (not (gethash b titled))))
+                                   (puthash b t titled)
+                                   (org-gcal-view--render-block-cell
+                                    b lw top date-str))
                                (make-string lw ?\s)))))
                  (line-str (concat "  " label (mapconcat #'identity cells ""))))
             (when (< (string-width line-str) grid-w)
@@ -753,7 +759,10 @@ so it never covers events."
                                         'org-gcal-view-today-highlight
                                       'default))))))
                (insert "\n")))
-    (cl-loop for h from h0 below h1 do
+    ;; Tracks, by block identity, which blocks have already had their
+    ;; title row rendered - see `org-gcal-view--week-cell'.
+    (let ((titled (make-hash-table :test 'eq)))
+     (cl-loop for h from h0 below h1 do
              (cl-loop for m from 0 below 60 by slot do
                       (let* ((mins (+ (* h 60) m))
                              (at-hour (zerop m))
@@ -770,7 +779,7 @@ so it never covers events."
                                 (concat line-str
                                         (org-gcal-view--week-cell
                                          blocks mins date today col-width
-                                         (* h0 60)))))
+                                         titled))))
                         (when (< (string-width line-str) grid-w)
                           (setq line-str
                                 (concat line-str
@@ -781,7 +790,7 @@ so it never covers events."
                           (add-face-text-property
                            0 (length line-str)
                            'org-gcal-view-rule t line-str))
-                        (insert line-str "\n"))))
+                        (insert line-str "\n")))))
     (org-gcal-view--current-time-overlay
      today (+ 3 max-ad) slot h0 h1)))
 
@@ -819,13 +828,15 @@ so it never covers events."
               ('work "\nwork") ('life "\nlife")
               ('habit "\nhabit") (_ "")))))
 
-(defun org-gcal-view--week-cell (blocks mins date today col-width
-                                           &optional grid-mins)
+(defun org-gcal-view--week-cell (blocks mins date today col-width titled)
   "Return one week-view grid cell for slot MINS on DATE.
 BLOCKS is that day's block list; TODAY highlights empty cells for
-the current date.  COL-WIDTH is the column width; GRID-MINS the
-first visible minute of the grid.  The title shows once per block,
-on its first visible row."
+the current date.  COL-WIDTH is the column width.  TITLED is a hash
+table (test `eq') tracking, across the whole week render, which
+blocks have already had their title row rendered - checked here
+(and updated) rather than comparing MINS to the block's exact start
+minute, since that need not land on a slot boundary.  The title
+shows once per block, on its first visible row."
   (let ((b (cl-find-if (lambda (x)
                          (and (<= (nth 0 x) mins) (< mins (nth 1 x))))
                        blocks)))
@@ -835,9 +846,11 @@ on its first visible row."
                  (org-gcal-view--kind-stripe-face (nth 3 b)))
                 (propertize
                  (concat " "
-                         (if (= mins (max (nth 0 b) (or grid-mins 0)))
-                             (org-gcal-view--truncate
-                              (or (nth 2 b) "") (- col-width 2))
+                         (if (not (gethash b titled))
+                             (progn
+                               (puthash b t titled)
+                               (org-gcal-view--truncate
+                                (or (nth 2 b) "") (- col-width 2)))
                            (make-string (- col-width 2) ?\s)))
                  'face (org-gcal-view--kind-block-face
                         (nth 3 b) (nth 7 b))

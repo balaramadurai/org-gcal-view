@@ -128,6 +128,60 @@ file, and run BODY."
       (should (equal (nth 2 (nth 1 blocks)) "Event B")))))
 
 ;; ------------------------------------------------------------
+;; Rendering
+;; ------------------------------------------------------------
+
+(defun org-gcal-view-test--line-at (title)
+  "Return the buffer line containing TITLE, or nil."
+  (save-excursion
+    (goto-char (point-min))
+    (let (found)
+      (while (and (not found) (not (eobp)))
+        (let ((line (buffer-substring (line-beginning-position)
+                                      (line-end-position))))
+          (when (string-match-p (regexp-quote title) line)
+            (setq found line)))
+        (forward-line 1))
+      found)))
+
+(ert-deftest org-gcal-view-test-day-view-title-visible-off-slot-start ()
+  ;; An event starting at a minute that isn't on a slot boundary (here
+  ;; :07, vs. the default 30-minute grid) must still show its title
+  ;; once, not render as a blank colored bar for its whole duration -
+  ;; the row's exact minute never equals such a start time.
+  (org-gcal-view-test-with-agenda-file
+      "* Odd Start\n  <2026-08-27 Thu 20:07-21:00>\n"
+    (org-gcal-view-day-view "2026-08-27")
+    (with-current-buffer org-gcal-view-buffer-name
+      (should (org-gcal-view-test--line-at "Odd Start")))))
+
+(ert-deftest org-gcal-view-test-week-view-title-visible-off-slot-start ()
+  (org-gcal-view-test-with-agenda-file
+      "* Odd Start\n  <2026-08-24 Mon 20:07-21:00>\n"
+    (org-gcal-view-week-view "2026-08-24")
+    (with-current-buffer org-gcal-view-buffer-name
+      (should (org-gcal-view-test--line-at "Odd Start")))))
+
+(ert-deftest org-gcal-view-test-day-view-title-shown-once-per-block ()
+  ;; Regardless of slot alignment, the title must appear on exactly
+  ;; one row of a multi-row block, not every row (which would defeat
+  ;; the "solid bar below the title" look) and not zero rows.
+  (org-gcal-view-test-with-agenda-file
+      "* Long Event\n  <2026-08-27 Thu 09:00-11:00>\n"
+    (org-gcal-view-day-view "2026-08-27")
+    (with-current-buffer org-gcal-view-buffer-name
+      (goto-char (point-min))
+      (let ((count 0))
+        (while (not (eobp))
+          (when (string-match-p
+                 "Long Event"
+                 (buffer-substring (line-beginning-position)
+                                   (line-end-position)))
+            (setq count (1+ count)))
+          (forward-line 1))
+        (should (= count 1))))))
+
+;; ------------------------------------------------------------
 ;; Day-view same-row navigation (overlapping events)
 ;; ------------------------------------------------------------
 
