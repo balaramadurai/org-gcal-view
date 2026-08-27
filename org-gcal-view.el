@@ -20,7 +20,7 @@
 ;;   TAB previews an event in a split, RET opens it, mouse clicks work
 ;;   everywhere (events open; month days jump), "/" searches titles
 ;; - Thin current-time hairline
-;; - First day of week controlled by `modern-emacs/gcal-week-start-day'
+;; - First day of week controlled by `org-gcal-view-week-start-day'
 ;; - Clocking support integration (total clocked time + live clock indicator)
 ;; - Event creation and editing
 
@@ -38,160 +38,160 @@
 ;; * Configuration
 ;; ============================================================
 
-(defgroup modern-emacs/gcal nil
+(defgroup org-gcal-view nil
   "Google Calendar interface for Emacs."
   :group 'org-agenda
-  :prefix "modern-emacs/gcal-")
+  :prefix "org-gcal-view-")
 
-(defcustom modern-emacs/gcal-day-start-hour 6
+(defcustom org-gcal-view-day-start-hour 6
   "Start hour for day/week view (24h format)."
   :type 'integer
-  :group 'modern-emacs/gcal)
+  :group 'org-gcal-view)
 
-(defcustom modern-emacs/gcal-day-end-hour 22
+(defcustom org-gcal-view-day-end-hour 22
   "End hour for day/week view (24h format)."
   :type 'integer
-  :group 'modern-emacs/gcal)
+  :group 'org-gcal-view)
 
-(defcustom modern-emacs/gcal-slot-minutes 30
+(defcustom org-gcal-view-slot-minutes 30
   "Minute granularity for the day grid."
   :type 'integer
-  :group 'modern-emacs/gcal)
+  :group 'org-gcal-view)
 
-(defcustom modern-emacs/gcal-week-start-day 1
+(defcustom org-gcal-view-week-start-day 1
   "Day to start week (0=Sunday, 1=Monday)."
   :type 'integer
-  :group 'modern-emacs/gcal)
+  :group 'org-gcal-view)
 
-(defcustom modern-emacs/gcal-show-clocking t
+(defcustom org-gcal-view-show-clocking t
   "Show clocking time in event blocks."
   :type 'boolean
-  :group 'modern-emacs/gcal)
+  :group 'org-gcal-view)
 
 ;; ============================================================
 ;; * Faces - Google Calendar inspired
 ;; ============================================================
 
-(defface modern-emacs/gcal-day-title
+(defface org-gcal-view-day-title
   '((t (:height 1.4 :weight bold :underline t)))
   "Large date heading at the top of the day view.")
 
-(defface modern-emacs/gcal-week-title
+(defface org-gcal-view-week-title
   '((t (:height 1.2 :weight bold)))
   "Title for week view.")
 
-(defface modern-emacs/gcal-month-title
+(defface org-gcal-view-month-title
   '((t (:height 1.3 :weight bold :underline t)))
   "Title for month view.")
 
-(defface modern-emacs/gcal-hour-label
+(defface org-gcal-view-hour-label
   '((((background dark)) (:foreground "#9AA2AC"))
     (t (:foreground "#6B747F")))
   "The label shown at exact hours (HH:MM).")
 
-(defface modern-emacs/gcal-half-hour-label
+(defface org-gcal-view-half-hour-label
   '((((background dark)) (:foreground "#5D6672"))
     (t (:foreground "#A8AFB7")))
   "The label shown at half-hours (faint).")
 
-(defface modern-emacs/gcal-rule
+(defface org-gcal-view-rule
   '((((background dark)) (:underline (:color "#262C35" :position 0)))
     (t (:underline (:color "#E2E6EB" :position 0))))
   "A hairline drawn with an underline at exact hours.")
 
-(defface modern-emacs/gcal-rule-faint
+(defface org-gcal-view-rule-faint
   '((((background dark)) (:underline (:color "#1F242C" :position 0)))
     (t (:underline (:color "#EFF2F5" :position 0))))
   "A fainter hairline at half-hour boundaries.")
 
 ;; Block faces for events of different kinds
-(defface modern-emacs/gcal-blk-work
+(defface org-gcal-view-blk-work
   '((((background dark)) (:background "#1E3340" :foreground "#DCE8EF"))
     (t (:background "#DCE8EF" :foreground "#16323F")))
   "Background for a work block (blue).")
 
-(defface modern-emacs/gcal-blk-life
+(defface org-gcal-view-blk-life
   '((((background dark)) (:background "#271F2C" :foreground "#E7DCEC"))
     (t (:background "#EDE6F0" :foreground "#3A2C42")))
   "Background for a life block (purple).")
 
-(defface modern-emacs/gcal-blk-habit
+(defface org-gcal-view-blk-habit
   '((((background dark)) (:background "#1C2A22" :foreground "#DDEFE2"))
     (t (:background "#E1EDE5" :foreground "#24382C")))
   "Background for a habit block (green).")
 
-(defface modern-emacs/gcal-blk-default
+(defface org-gcal-view-blk-default
   '((((background dark)) (:background "#3b82f6" :foreground "#fff"))
     (t (:background "#60a5fa" :foreground "#000")))
   "Background for an unclassified block (Google blue).")
 
 ;; Left stripe faces
-(defface modern-emacs/gcal-stripe-work
+(defface org-gcal-view-stripe-work
   '((((background dark)) (:background "#79B0CC"))
     (t (:background "#2C5F7C")))
   "The left stripe for a work block.")
 
-(defface modern-emacs/gcal-stripe-life
+(defface org-gcal-view-stripe-life
   '((((background dark)) (:background "#B197BE"))
     (t (:background "#7A5C86")))
   "The left stripe for a life block.")
 
-(defface modern-emacs/gcal-stripe-habit
+(defface org-gcal-view-stripe-habit
   '((((background dark)) (:background "#7FB394"))
     (t (:background "#4A7A5E")))
   "The left stripe for a habit block.")
 
-(defface modern-emacs/gcal-stripe-default
+(defface org-gcal-view-stripe-default
   '((((background dark)) (:background "#1e40af"))
     (t (:background "#1d4ed8")))
   "The left stripe for an unclassified block.")
 
-(defface modern-emacs/gcal-blk-time
+(defface org-gcal-view-blk-time
   '((((background dark)) (:foreground "#9FC4D6"))
     (t (:foreground "#4A6D80")))
   "Small time text inside a block.")
 
-(defface modern-emacs/gcal-current-time
+(defface org-gcal-view-current-time
   '((t (:background "#dc2626" :foreground "#fff" :weight bold)))
   "Face for the current time line indicator.")
 
-(defface modern-emacs/gcal-now-line
+(defface org-gcal-view-now-line
   '((t (:underline (:color "#dc2626" :style line))))
   "Thin hairline face for the current time indicator.
 Underline-only so it never covers events like a band.")
 
-(defface modern-emacs/gcal-focus
+(defface org-gcal-view-focus
   '((t (:inverse-video t)))
   "Face used to pulse the focused event/day line.")
 
-(defface modern-emacs/gcal-today-highlight
+(defface org-gcal-view-today-highlight
   '((((background dark)) (:background "#1a1a2e"))
     (t (:background "#f0f0ff")))
   "Background highlight for today column in week view.")
 
-(defface modern-emacs/gcal-weekday
+(defface org-gcal-view-weekday
   '((t (:weight bold)))
   "Face for weekday names.")
 
-(defface modern-emacs/gcal-weekend
+(defface org-gcal-view-weekend
   '((((background dark)) (:foreground "#888"))
     (t (:foreground "#666")))
   "Face for weekend day names.")
 
-(defface modern-emacs/gcal-month-day
+(defface org-gcal-view-month-day
   '((t (:height 0.9)))
   "Face for month day numbers.")
 
-(defface modern-emacs/gcal-month-today
+(defface org-gcal-view-month-today
   '((t (:background "#3b82f6" :foreground "#fff" :weight bold)))
   "Face for today in month view.")
 
-(defface modern-emacs/gcal-month-event-dot
+(defface org-gcal-view-month-event-dot
   '((((background dark)) (:foreground "#3b82f6"))
     (t (:foreground "#3b82f6")))
   "Face for event dots in month view.")
 
-(defface modern-emacs/gcal-clocking
+(defface org-gcal-view-clocking
   '((((background dark)) (:background "#2d4a22" :foreground "#90EE90" :weight bold))
     (t (:background "#e6ffe6" :foreground "#228B22" :weight bold)))
   "Face for currently clocking event.")
@@ -200,13 +200,13 @@ Underline-only so it never covers events like a band.")
 ;; * State Variables
 ;; ============================================================
 
-(defvar modern-emacs/gcal-current-date nil
+(defvar org-gcal-view-current-date nil
   "Currently displayed date in YYYY-MM-DD format.")
 
-(defvar modern-emacs/gcal-current-view 'day
+(defvar org-gcal-view-current-view 'day
   "Current view mode: symbol `day', `week', or `month'.")
 
-(defvar modern-emacs/gcal-buffer-name "*Google Calendar*"
+(defvar org-gcal-view-buffer-name "*Google Calendar*"
   "Name of the Google Calendar buffer.")
 
 ;; ============================================================
@@ -216,17 +216,17 @@ Underline-only so it never covers events like a band.")
 ;; Matches "YYYY-MM-DD", optionally followed by " DAYNAME" and/or
 ;; " HH:MM" and a range end "-HH:MM".  Groups:
 ;;   1 year, 2 month, 3 day, 4 hour, 5 minute, 6 end-hour, 7 end-minute.
-(defconst modern-emacs/gcal--ts-re
+(defconst org-gcal-view--ts-re
   "\\([0-9]\\{4\\}\\)-\\([0-9][0-9]\\)-\\([0-9][0-9]\\)\\(?: +[[:alpha:]]+\\)?\\(?: +\\([0-9]\\{1,2\\}\\):\\([0-9]\\{2\\}\\)\\)?\\(?:-\\([0-9]\\{1,2\\}\\):\\([0-9]\\{2\\}\\)\\)?"
   "Regex matching an Org timestamp date/time portion.")
 
-(defun modern-emacs/gcal--parse-ts-str (str)
+(defun org-gcal-view--parse-ts-str (str)
   "Parse Org timestamp STR.
 Return \(YEAR MONTH DAY START-MINS END-MINS ALL-DAY-P) or nil.
 Date-only timestamps default to 09:00-10:00 so they stay visible
 and are flagged ALL-DAY-P; timed timestamps without an end default
 to a 60 minute duration, never shorter than 30 minutes."
-  (when (and (stringp str) (string-match modern-emacs/gcal--ts-re str))
+  (when (and (stringp str) (string-match org-gcal-view--ts-re str))
     (let* ((year (string-to-number (match-string 1 str)))
            (month (string-to-number (match-string 2 str)))
            (day (string-to-number (match-string 3 str)))
@@ -244,42 +244,42 @@ to a 60 minute duration, never shorter than 30 minutes."
             (min 1440 (max raw-end (+ start 30)))
             (and (not hour-str) t)))))
 
-(defun modern-emacs/gcal--parse-date-str (date-str)
+(defun org-gcal-view--parse-date-str (date-str)
   "Parse DATE-STR (YYYY-MM-DD) and return a time value."
   (let ((str (if (stringp date-str) date-str (format "%s" date-str))))
-    (when (string-match modern-emacs/gcal--ts-re str)
+    (when (string-match org-gcal-view--ts-re str)
       (encode-time 0 0 12
                    (string-to-number (match-string 3 str))
                    (string-to-number (match-string 2 str))
                    (string-to-number (match-string 1 str))))))
 
-(defun modern-emacs/gcal--date-add-days (date-str days)
+(defun org-gcal-view--date-add-days (date-str days)
   "Add DAYS to DATE-STR (YYYY-MM-DD) and return new date string."
   (let ((str (if (stringp date-str) date-str (format "%s" date-str))))
-    (let ((time (modern-emacs/gcal--parse-date-str str)))
+    (let ((time (org-gcal-view--parse-date-str str)))
       (when time
         (format-time-string "%Y-%m-%d" (time-add time (* days 86400)))))))
 
-(defun modern-emacs/gcal--day-of-week (date-str)
+(defun org-gcal-view--day-of-week (date-str)
   "Return day of week for DATE-STR (0=Sunday, 6=Saturday)."
-  (let ((time (modern-emacs/gcal--parse-date-str date-str)))
+  (let ((time (org-gcal-view--parse-date-str date-str)))
     (when time
       (nth 6 (decode-time time)))))
 
-(defun modern-emacs/gcal--week-start (date-str)
+(defun org-gcal-view--week-start (date-str)
   "Return the first day of the week containing DATE-STR."
-  (let* ((dow (modern-emacs/gcal--day-of-week date-str))
-         (delta (mod (- dow modern-emacs/gcal-week-start-day) 7)))
-    (modern-emacs/gcal--date-add-days date-str (- delta))))
+  (let* ((dow (org-gcal-view--day-of-week date-str))
+         (delta (mod (- dow org-gcal-view-week-start-day) 7)))
+    (org-gcal-view--date-add-days date-str (- delta))))
 
-(defun modern-emacs/gcal--days-in-month (date-str)
+(defun org-gcal-view--days-in-month (date-str)
   "Return number of days in the month containing DATE-STR."
   (let* ((parts (split-string date-str "-"))
          (year (string-to-number (nth 0 parts)))
          (month (string-to-number (nth 1 parts))))
     (calendar-last-day-of-month month year)))
 
-(defun modern-emacs/gcal--truncate (str width)
+(defun org-gcal-view--truncate (str width)
   "Truncate STR to WIDTH columns, padding with spaces if shorter."
   (let ((s (if (stringp str) str (if str (format "%s" str) ""))))
     (truncate-string-to-width s width 0 ?\s)))
@@ -288,14 +288,14 @@ to a 60 minute duration, never shorter than 30 minutes."
 ;; * Event Collection
 ;; ============================================================
 
-(defun modern-emacs/gcal--timestamp-kind (tags)
+(defun org-gcal-view--timestamp-kind (tags)
   "Determine block kind from TAGS."
   (cond ((member "habit" tags) 'habit)
         ((member "life" tags) 'life)
         ((member "work" tags) 'work)
         (t 'default)))
 
-(defun modern-emacs/gcal--clocked-minutes ()
+(defun org-gcal-view--clocked-minutes ()
   "Sum CLOCK durations in the entry at point.  Point must be on a heading."
   (save-excursion
     (org-back-to-heading t)
@@ -308,7 +308,7 @@ to a 60 minute duration, never shorter than 30 minutes."
                                (match-string 1))))))
       total)))
 
-(defun modern-emacs/gcal--live-clock-p (file pos)
+(defun org-gcal-view--live-clock-p (file pos)
   "Return non-nil if the running clock is on entry at POS in FILE."
   (and (markerp org-clock-marker)
        (buffer-live-p (marker-buffer org-clock-marker))
@@ -316,7 +316,7 @@ to a 60 minute duration, never shorter than 30 minutes."
               (buffer-file-name (marker-buffer org-clock-marker)))
        (= pos (marker-position org-clock-marker))))
 
-(defun modern-emacs/gcal--blocks-in-file (file date-pred)
+(defun org-gcal-view--blocks-in-file (file date-pred)
   "Collect event blocks from FILE for dates accepted by DATE-PRED.
 DATE-PRED receives a \"YYYY-MM-DD\" string.  Each block is
 \(START-MINS END-MINS TITLE KIND FILE POS CLOCKED-MINUTES LIVE-P
@@ -334,7 +334,7 @@ SCHEDULED, DEADLINE, then the first active timestamp in the body."
                     (ts-str (or (org-entry-get (point) "SCHEDULED")
                                 (org-entry-get (point) "DEADLINE")
                                 (org-entry-get (point) "TIMESTAMP")))
-                    (parsed (modern-emacs/gcal--parse-ts-str ts-str)))
+                    (parsed (org-gcal-view--parse-ts-str ts-str)))
                (when parsed
                  (let* ((date-str (format "%04d-%02d-%02d"
                                           (nth 0 parsed)
@@ -342,40 +342,40 @@ SCHEDULED, DEADLINE, then the first active timestamp in the body."
                                           (nth 2 parsed))))
                    (when (funcall date-pred date-str)
                      (let* ((title (or (org-entry-get (point) "ITEM") "?"))
-                            (kind (modern-emacs/gcal--timestamp-kind
+                            (kind (org-gcal-view--timestamp-kind
                                    (ignore-errors (org-get-tags))))
-                            (clocked (if modern-emacs/gcal-show-clocking
+                            (clocked (if org-gcal-view-show-clocking
                                          (ignore-errors
-                                           (modern-emacs/gcal--clocked-minutes))
+                                           (org-gcal-view--clocked-minutes))
                                        0))
-                            (live (modern-emacs/gcal--live-clock-p file pos)))
+                            (live (org-gcal-view--live-clock-p file pos)))
                        (push (list (nth 3 parsed) (nth 4 parsed)
                                    title kind file pos clocked live
                                    date-str (nth 5 parsed))
                              blocks)))))))))))
     (sort blocks (lambda (a b) (< (car a) (car b))))))
 
-(defun modern-emacs/gcal--collect-blocks (date-str)
+(defun org-gcal-view--collect-blocks (date-str)
   "Collect event blocks for DATE-STR (YYYY-MM-DD) from `org-agenda-files'."
   (let ((blocks '()))
     (dolist (file (org-agenda-files))
       (setq blocks
             (append blocks
-                    (modern-emacs/gcal--blocks-in-file
+                    (org-gcal-view--blocks-in-file
                      file
                      (lambda (d) (string= d date-str))))))
     (sort blocks (lambda (a b) (< (car a) (car b))))))
 
-(defun modern-emacs/gcal--collect-week-blocks (start-date)
+(defun org-gcal-view--collect-week-blocks (start-date)
   "Collect all blocks for the week starting at START-DATE.
 Scans each agenda file once.  Returns a list of \(DATE . BLOCKS)
 in day order."
   (let* ((dates (cl-loop for i from 0 below 7
                          collect
-                         (modern-emacs/gcal--date-add-days start-date i)))
+                         (org-gcal-view--date-add-days start-date i)))
          (by-date (mapcar (lambda (d) (cons d '())) dates)))
     (dolist (file (org-agenda-files))
-      (dolist (b (modern-emacs/gcal--blocks-in-file
+      (dolist (b (org-gcal-view--blocks-in-file
                   file (lambda (d) (member d dates))))
         (when-let ((cell (assoc (nth 8 b) by-date)))
           (push b (cdr cell)))))
@@ -384,14 +384,14 @@ in day order."
                          (lambda (a b) (< (car a) (car b))))))
     by-date))
 
-(defun modern-emacs/gcal--month-event-days (year month)
+(defun org-gcal-view--month-event-days (year month)
   "Return a hash table of YYYY-MM-DD -> t for days with events
 in YEAR/MONTH, scanning each agenda file once."
   (let ((days (make-hash-table :test 'equal))
         (prefix (format "%04d-%02d" year month))
         (last (calendar-last-day-of-month month year)))
     (dolist (file (org-agenda-files))
-      (dolist (b (modern-emacs/gcal--blocks-in-file
+      (dolist (b (org-gcal-view--blocks-in-file
                   file
                   (lambda (d)
                     (and (string-prefix-p prefix d)
@@ -404,11 +404,11 @@ in YEAR/MONTH, scanning each agenda file once."
 ;; * Debug Helper
 ;; ============================================================
 
-(defun modern-emacs/gcal-debug-collect (&optional date-str)
+(defun org-gcal-view-debug-collect (&optional date-str)
   "Diagnostic: report collected blocks for DATE-STR (default today)."
   (interactive)
   (let ((date-str (or date-str (format-time-string "%Y-%m-%d")))
-        (blocks (modern-emacs/gcal--collect-blocks
+        (blocks (org-gcal-view--collect-blocks
                  (or date-str (format-time-string "%Y-%m-%d")))))
     (message "=== GCal collect for %s: %d blocks ===" date-str (length blocks))
     (dolist (b blocks)
@@ -422,11 +422,11 @@ in YEAR/MONTH, scanning each agenda file once."
 ;; * Lane Assignment
 ;; ============================================================
 
-(defun modern-emacs/gcal--overlaps-p (a b)
+(defun org-gcal-view--overlaps-p (a b)
   "Return non-nil if time ranges A and B overlap."
   (< (max (nth 0 a) (nth 0 b)) (min (nth 1 a) (nth 1 b))))
 
-(defun modern-emacs/gcal--assign-lanes (blocks)
+(defun org-gcal-view--assign-lanes (blocks)
   "Assign sorted BLOCKS to non-overlapping lanes, GCal-style.
 Overlapping events pile into side-by-side lanes; the lane count
 grows as needed so nothing is dropped.  Returns LANES, a list of
@@ -436,7 +436,7 @@ non-empty lane lists sorted by start time."
       (let ((lane (cl-position-if
                    (lambda (l)
                      (not (cl-some (lambda (o)
-                                     (modern-emacs/gcal--overlaps-p o b))
+                                     (org-gcal-view--overlaps-p o b))
                                    l)))
                    lanes)))
         (if lane
@@ -448,7 +448,7 @@ non-empty lane lists sorted by start time."
 ;; * Clocking Display
 ;; ============================================================
 
-(defun modern-emacs/gcal--format-clocked (minutes)
+(defun org-gcal-view--format-clocked (minutes)
   "Format clocked MINUTES as H:MM string, or nil if zero."
   (when (and minutes (> minutes 0))
     (format "%d:%02d" (/ minutes 60) (% minutes 60))))
@@ -457,7 +457,7 @@ non-empty lane lists sorted by start time."
 ;; * All-day Section
 ;; ============================================================
 
-(defun modern-emacs/gcal--allday-chip (b width)
+(defun org-gcal-view--allday-chip (b width)
   "Render all-day block B as a colored chip WIDTH columns wide."
   (let* ((title (or (nth 2 b) ""))
          (kind (nth 3 b))
@@ -466,10 +466,10 @@ non-empty lane lists sorted by start time."
          (live (nth 7 b))
          (txt (concat
                (propertize
-                " " 'face (modern-emacs/gcal--kind-stripe-face kind))
+                " " 'face (org-gcal-view--kind-stripe-face kind))
                (propertize
-                (modern-emacs/gcal--truncate title (max 1 (1- width)))
-                'face (modern-emacs/gcal--kind-block-face kind live)
+                (org-gcal-view--truncate title (max 1 (1- width)))
+                'face (org-gcal-view--kind-block-face kind live)
                 'help-echo (format "%s\nall-day%s"
                                    title
                                    (if live " [clocking]" ""))))))
@@ -480,13 +480,13 @@ non-empty lane lists sorted by start time."
                          txt)
     txt))
 
-(defun modern-emacs/gcal--render-allday (blocks avail)
+(defun org-gcal-view--render-allday (blocks avail)
   "Insert an all-day section for BLOCKS within AVAIL columns.
 Returns the number of lines inserted (0 if no blocks)."
   (if (null blocks)
       0
     (insert (propertize " all-day\n"
-                        'face 'modern-emacs/gcal-half-hour-label))
+                        'face 'org-gcal-view-half-hour-label))
     (let ((lines 1) (x 0) out)
       (dolist (b blocks)
         (let* ((need (min avail (+ 3 (string-width (or (nth 2 b) "")))))
@@ -495,7 +495,7 @@ Returns the number of lines inserted (0 if no blocks)."
             (push "\n" out)
             (setq lines (1+ lines) x 0
                   w (min avail (+ 3 (string-width (or (nth 2 b) ""))))))
-          (push (modern-emacs/gcal--allday-chip b w) out)
+          (push (org-gcal-view--allday-chip b w) out)
           (setq x (+ x w))))
       (insert (apply #'concat (nreverse out)) "\n")
       (1+ lines))))
@@ -504,7 +504,7 @@ Returns the number of lines inserted (0 if no blocks)."
 ;; * Day View Rendering
 ;; ============================================================
 
-(defun modern-emacs/gcal--render-block-cell (b mins lw &optional grid-mins)
+(defun org-gcal-view--render-block-cell (b mins lw &optional grid-mins)
   "Render one grid cell for block B at slot minute MINS.
 LW is the lane width; GRID-MINS is the first minute shown by the
 grid (blocks starting before it are clipped).  The title shows once,
@@ -517,7 +517,7 @@ colored bar.  help-echo carries the full name and details."
          (file (nth 4 b))
          (pos (nth 5 b))
          (clocked-mins (nth 6 b))
-         (clocked (modern-emacs/gcal--format-clocked clocked-mins))
+         (clocked (org-gcal-view--format-clocked clocked-mins))
          (live (nth 7 b))
          ;; First *visible* row: blocks starting before the grid top
          ;; are clipped, so their first rendered row must carry text.
@@ -531,10 +531,10 @@ colored bar.  help-echo carries the full name and details."
                        (format "  %02d:%02d-%02d:%02d"
                                (/ start-mins 60) (% start-mins 60)
                                (/ end-mins 60) (% end-mins 60))
-                       'face 'modern-emacs/gcal-blk-time))
+                       'face 'org-gcal-view-blk-time))
                     (when clocked
                       (propertize (format " [%s]" clocked)
-                                  'face 'modern-emacs/gcal-blk-time)))))
+                                  'face 'org-gcal-view-blk-time)))))
          (tip (format "%s\n%02d:%02d–%02d:%02d%s%s"
                       title
                       (/ start-mins 60) (% start-mins 60)
@@ -546,14 +546,14 @@ colored bar.  help-echo carries the full name and details."
                       (pcase kind
                         ('work "\nwork") ('life "\nlife")
                         ('habit "\nhabit") (_ ""))))
-         (stripe-face (modern-emacs/gcal--kind-stripe-face kind))
+         (stripe-face (org-gcal-view--kind-stripe-face kind))
          (stripe (propertize " " 'face stripe-face))
          (txt (concat stripe
                       (propertize
                        (concat " "
-                               (modern-emacs/gcal--truncate
+                               (org-gcal-view--truncate
                                 body (- lw 2)))
-                       'face (modern-emacs/gcal--kind-block-face kind live)
+                       'face (org-gcal-view--kind-block-face kind live)
                        'help-echo tip))))
     (add-text-properties 0 (length txt)
                          (list 'gcal-file file 'gcal-pos pos
@@ -562,17 +562,17 @@ colored bar.  help-echo carries the full name and details."
                          txt)
     txt))
 
-(defun modern-emacs/gcal--render-day (date-str blocks)
+(defun org-gcal-view--render-day (date-str blocks)
   "Render the day view for DATE-STR with BLOCKS.
 Overlapping events squeeze into side-by-side lanes; the lane
 count adapts so every event stays visible."
-  (let* ((slot modern-emacs/gcal-slot-minutes)
-         (h0 modern-emacs/gcal-day-start-hour)
-         (h1 modern-emacs/gcal-day-end-hour)
+  (let* ((slot org-gcal-view-slot-minutes)
+         (h0 org-gcal-view-day-start-hour)
+         (h1 org-gcal-view-day-end-hour)
          (labw 7)
          (allday (cl-remove-if-not (lambda (b) (nth 9 b)) blocks))
          (timed (cl-remove-if (lambda (b) (nth 9 b)) blocks))
-         (lanes (modern-emacs/gcal--assign-lanes timed))
+         (lanes (org-gcal-view--assign-lanes timed))
          (nlanes (length lanes))
          (win (get-buffer-window nil t))
          (wwidth (if win (window-width win) (frame-width)))
@@ -581,16 +581,16 @@ count adapts so every event stays visible."
          (s0 (* h0 (/ 60 slot)))
          (s1 (* h1 (/ 60 slot)))
          (grid-w (+ labw (* nlanes lw) 2))
-         (day-time (modern-emacs/gcal--parse-date-str date-str)))
+         (day-time (org-gcal-view--parse-date-str date-str)))
     (erase-buffer)
     (insert (propertize
              (if day-time
                  (format-time-string "%A, %B %d, %Y" day-time)
                (format "%s" date-str))
-             'face 'modern-emacs/gcal-day-title)
+             'face 'org-gcal-view-day-title)
             "\n\n")
     ;; All-day events sit between the title and the time grid
-    (let ((ad-lines (modern-emacs/gcal--render-allday allday avail)))
+    (let ((ad-lines (org-gcal-view--render-allday allday avail)))
       (let ((slot-idx s0))
         (while (< slot-idx s1)
           (let* ((mins (* slot-idx slot))
@@ -598,9 +598,9 @@ count adapts so every event stays visible."
                  (at-hour (zerop m))
                  (label (if at-hour
                             (propertize (format "%02d:%02d  " (/ mins 60) m)
-                                        'face 'modern-emacs/gcal-hour-label)
+                                        'face 'org-gcal-view-hour-label)
                           (propertize "       "
-                                      'face 'modern-emacs/gcal-half-hour-label)))
+                                      'face 'org-gcal-view-half-hour-label)))
                  (cells
                   (cl-loop for lane in lanes collect
                            (let ((b (cl-find-if
@@ -609,7 +609,7 @@ count adapts so every event stays visible."
                                             (< mins (nth 1 x))))
                                      lane)))
                              (if b
-                                 (modern-emacs/gcal--render-block-cell
+                                 (org-gcal-view--render-block-cell
                                   b mins lw (* h0 60))
                                (make-string lw ?\s)))))
                  (line-str (concat "  " label (mapconcat #'identity cells ""))))
@@ -620,13 +620,13 @@ count adapts so every event stays visible."
                                          ?\s))))
             (when at-hour
               (add-face-text-property 0 (length line-str)
-                                      'modern-emacs/gcal-rule t line-str))
+                                      'org-gcal-view-rule t line-str))
             (insert line-str "\n")
             (setq slot-idx (1+ slot-idx)))))
-      (modern-emacs/gcal--current-time-overlay
+      (org-gcal-view--current-time-overlay
        date-str (+ 2 ad-lines) slot h0 h1))))
 
-(defun modern-emacs/gcal--current-time-overlay (date-str header-lines slot h0 h1)
+(defun org-gcal-view--current-time-overlay (date-str header-lines slot h0 h1)
   "Draw the current time indicator if DATE-STR is today.
 HEADER-LINES is the number of lines before the grid starts.  A thin
 red hairline underlines the current slot row - no background band,
@@ -647,26 +647,26 @@ so it never covers events."
               (forward-line target-line)
               (setq overlay (make-overlay (line-beginning-position)
                                           (line-end-position))))
-            (overlay-put overlay 'face 'modern-emacs/gcal-now-line)
+            (overlay-put overlay 'face 'org-gcal-view-now-line)
             (overlay-put overlay 'priority 100)
             ;; Keep a pointer to redraw/inspect later
-            (setq-local modern-emacs/gcal--now-overlay overlay))))
+            (setq-local org-gcal-view--now-overlay overlay))))
     (error nil)))
 
-(defvar-local modern-emacs/gcal--now-overlay nil
+(defvar-local org-gcal-view--now-overlay nil
   "Overlay for the current time hairline in the calendar buffer.")
 
 ;; ============================================================
 ;; * Week View Rendering
 ;; ============================================================
 
-(defun modern-emacs/gcal--render-week (start-date)
+(defun org-gcal-view--render-week (start-date)
   "Render the week view starting at START-DATE."
-  (let* ((slot modern-emacs/gcal-slot-minutes)
-         (h0 modern-emacs/gcal-day-start-hour)
-         (h1 modern-emacs/gcal-day-end-hour)
+  (let* ((slot org-gcal-view-slot-minutes)
+         (h0 org-gcal-view-day-start-hour)
+         (h1 org-gcal-view-day-end-hour)
          (today (format-time-string "%Y-%m-%d"))
-         (day-blocks (modern-emacs/gcal--collect-week-blocks start-date))
+         (day-blocks (org-gcal-view--collect-week-blocks start-date))
          (names ["Sun" "Mon" "Tue" "Wed" "Thu" "Fri" "Sat"])
          (win (get-buffer-window nil t))
          (wwidth (if win (window-width win) (frame-width)))
@@ -689,9 +689,9 @@ so it never covers events."
                                          (cdr cell))))
                                 day-blocks)))
     (erase-buffer)
-    (let* ((start-time (modern-emacs/gcal--parse-date-str start-date))
-           (end-date (modern-emacs/gcal--date-add-days start-date 6))
-           (end-time (modern-emacs/gcal--parse-date-str end-date)))
+    (let* ((start-time (org-gcal-view--parse-date-str start-date))
+           (end-date (org-gcal-view--date-add-days start-date 6))
+           (end-time (org-gcal-view--parse-date-str end-date)))
       (insert (propertize
                (format "%s – %s\n\n"
                        (if start-time
@@ -700,19 +700,19 @@ so it never covers events."
                        (if end-time
                            (format-time-string "%B %d, %Y" end-time)
                          end-date))
-               'face 'modern-emacs/gcal-week-title)))
+               'face 'org-gcal-view-week-title)))
     (insert (make-string labw ?\s))
     (cl-loop for (date . _) in day-blocks
              for i from 0
-             do (let* ((dow (mod (+ modern-emacs/gcal-week-start-day i) 7))
+             do (let* ((dow (mod (+ org-gcal-view-week-start-day i) 7))
                        (is-today (string= date today))
                        (is-weekend (member dow '(0 6)))
-                       (face (cond (is-today 'modern-emacs/gcal-month-today)
-                                   (is-weekend 'modern-emacs/gcal-weekend)
-                                   (t 'modern-emacs/gcal-weekday)))
+                       (face (cond (is-today 'org-gcal-view-month-today)
+                                   (is-weekend 'org-gcal-view-weekend)
+                                   (t 'org-gcal-view-weekday)))
                        (date-num (substring date 8)))
                    (insert (propertize
-                            (modern-emacs/gcal--truncate
+                            (org-gcal-view--truncate
                              (format "%s %s" (aref names dow) date-num)
                              col-width)
                             'face face))))
@@ -721,16 +721,16 @@ so it never covers events."
     (when (> max-ad 0)
       (cl-loop for j from 0 below max-ad do
                (insert (propertize " all-day"
-                                   'face 'modern-emacs/gcal-half-hour-label))
+                                   'face 'org-gcal-view-half-hour-label))
                (pcase-dolist (`(,date . ,ads) ad-per-day)
                  (let ((chip (nth j ads)))
                    (if chip
-                       (insert (modern-emacs/gcal--allday-chip
+                       (insert (org-gcal-view--allday-chip
                                 chip (- col-width 1)) " ")
                      (insert (propertize
                               (make-string col-width ?\s)
                               'face (if (string= date today)
-                                        'modern-emacs/gcal-today-highlight
+                                        'org-gcal-view-today-highlight
                                       'default))))))
                (insert "\n")))
     (cl-loop for h from h0 below h1 do
@@ -740,15 +740,15 @@ so it never covers events."
                              (label (if at-hour
                                         (propertize
                                          (format "%02d:%02d  " h m)
-                                         'face 'modern-emacs/gcal-hour-label)
+                                         'face 'org-gcal-view-hour-label)
                                       (propertize "       "
                                                   'face
-                                                  'modern-emacs/gcal-half-hour-label)))
+                                                  'org-gcal-view-half-hour-label)))
                              (line-str label))
                         (pcase-dolist (`(,date . ,blocks) timed-per-day)
                           (setq line-str
                                 (concat line-str
-                                        (modern-emacs/gcal--week-cell
+                                        (org-gcal-view--week-cell
                                          blocks mins date today col-width
                                          (* h0 60)))))
                         (when (< (string-width line-str) grid-w)
@@ -760,33 +760,33 @@ so it never covers events."
                         (when at-hour
                           (add-face-text-property
                            0 (length line-str)
-                           'modern-emacs/gcal-rule t line-str))
+                           'org-gcal-view-rule t line-str))
                         (insert line-str "\n"))))
-    (modern-emacs/gcal--current-time-overlay
+    (org-gcal-view--current-time-overlay
      today (+ 3 max-ad) slot h0 h1)))
 
-(defun modern-emacs/gcal--kind-block-face (kind live)
+(defun org-gcal-view--kind-block-face (kind live)
   "Return block face for KIND; LIVE clocking gets the clocking face."
   (if live
-      'modern-emacs/gcal-clocking
+      'org-gcal-view-clocking
     (pcase kind
-      ('work 'modern-emacs/gcal-blk-work)
-      ('life 'modern-emacs/gcal-blk-life)
-      ('habit 'modern-emacs/gcal-blk-habit)
-      (_ 'modern-emacs/gcal-blk-default))))
+      ('work 'org-gcal-view-blk-work)
+      ('life 'org-gcal-view-blk-life)
+      ('habit 'org-gcal-view-blk-habit)
+      (_ 'org-gcal-view-blk-default))))
 
-(defun modern-emacs/gcal--kind-stripe-face (kind)
+(defun org-gcal-view--kind-stripe-face (kind)
   "Return left stripe face for KIND."
   (pcase kind
-    ('work 'modern-emacs/gcal-stripe-work)
-    ('life 'modern-emacs/gcal-stripe-life)
-    ('habit 'modern-emacs/gcal-stripe-habit)
-    (_ 'modern-emacs/gcal-stripe-default)))
+    ('work 'org-gcal-view-stripe-work)
+    ('life 'org-gcal-view-stripe-life)
+    ('habit 'org-gcal-view-stripe-habit)
+    (_ 'org-gcal-view-stripe-default)))
 
-(defun modern-emacs/gcal--block-tip (b)
+(defun org-gcal-view--block-tip (b)
   "Return the help-echo tooltip text for block B."
   (let ((start (nth 0 b)) (end (nth 1 b))
-        (clocked (modern-emacs/gcal--format-clocked (nth 6 b)))
+        (clocked (org-gcal-view--format-clocked (nth 6 b)))
         (kind (nth 3 b)))
     (format "%s\n%02d:%02d-%02d:%02d%s%s"
             (or (nth 2 b) "")
@@ -799,7 +799,7 @@ so it never covers events."
               ('work "\nwork") ('life "\nlife")
               ('habit "\nhabit") (_ "")))))
 
-(defun modern-emacs/gcal--week-cell (blocks mins date today col-width
+(defun org-gcal-view--week-cell (blocks mins date today col-width
                                            &optional grid-mins)
   "Return one week-view grid cell for slot MINS on DATE.
 BLOCKS is that day's block list; TODAY highlights empty cells for
@@ -812,30 +812,30 @@ on its first visible row."
     (if b
         (concat (propertize
                  " " 'face
-                 (modern-emacs/gcal--kind-stripe-face (nth 3 b)))
+                 (org-gcal-view--kind-stripe-face (nth 3 b)))
                 (propertize
                  (concat " "
                          (if (= mins (max (nth 0 b) (or grid-mins 0)))
-                             (modern-emacs/gcal--truncate
+                             (org-gcal-view--truncate
                               (or (nth 2 b) "") (- col-width 2))
                            (make-string (- col-width 2) ?\s)))
-                 'face (modern-emacs/gcal--kind-block-face
+                 'face (org-gcal-view--kind-block-face
                         (nth 3 b) (nth 7 b))
-                 'help-echo (modern-emacs/gcal--block-tip b)
+                 'help-echo (org-gcal-view--block-tip b)
                  'gcal-file (nth 4 b)
                  'gcal-pos (nth 5 b)
                  'gcal-title (or (nth 2 b) "")
                  'mouse-face 'highlight))
       (propertize (make-string col-width ?\s)
                   'face (if (string= date today)
-                            'modern-emacs/gcal-today-highlight
+                            'org-gcal-view-today-highlight
                           'default)))))
 
 ;; ============================================================
 ;; * Month View Rendering
 ;; ============================================================
 
-(defun modern-emacs/gcal--render-month (date-str)
+(defun org-gcal-view--render-month (date-str)
   "Render the month view for DATE-STR."
   (let* ((parts (split-string date-str "-"))
          (year (string-to-number (nth 0 parts)))
@@ -843,27 +843,27 @@ on its first visible row."
          (today (format-time-string "%Y-%m-%d"))
          (first-day (format "%04d-%02d-01" year month))
          (days-in-month (calendar-last-day-of-month month year))
-         (start-dow (modern-emacs/gcal--day-of-week first-day))
-         (event-days (modern-emacs/gcal--month-event-days year month))
+         (start-dow (org-gcal-view--day-of-week first-day))
+         (event-days (org-gcal-view--month-event-days year month))
          (names ["Sun" "Mon" "Tue" "Wed" "Thu" "Fri" "Sat"])
          (day-names (cl-loop for k from 0 below 7
                              collect
                              (aref names
-                                   (mod (+ modern-emacs/gcal-week-start-day k)
+                                   (mod (+ org-gcal-view-week-start-day k)
                                         7))))
-         (offset (mod (- start-dow modern-emacs/gcal-week-start-day) 7)))
+         (offset (mod (- start-dow org-gcal-view-week-start-day) 7)))
     (erase-buffer)
     (insert (propertize
              (format "%s %d\n\n"
                      (format-time-string
                       "%B"
-                      (modern-emacs/gcal--parse-date-str first-day))
+                      (org-gcal-view--parse-date-str first-day))
                      year)
-             'face 'modern-emacs/gcal-month-title))
+             'face 'org-gcal-view-month-title))
     (insert "  ")
     (dolist (name day-names)
       (insert (propertize (format "%-13s" name)
-                          'face 'modern-emacs/gcal-weekday)))
+                          'face 'org-gcal-view-weekday)))
     (insert "\n")
     (cl-loop for week from 0 to 5 do
              (insert "  ")
@@ -886,14 +886,14 @@ on its first visible row."
                         (when is-today
                           (setq cell (copy-sequence cell))
                           (add-face-text-property
-                           0 (length cell) 'modern-emacs/gcal-month-today
+                           0 (length cell) 'org-gcal-view-month-today
                            t cell))
                         (when has-events
                           ;; Recolor just the dot on non-today cells
                           (setq cell (copy-sequence cell))
                           (put-text-property
                            11 12
-                           'face 'modern-emacs/gcal-month-event-dot cell))
+                           'face 'org-gcal-view-month-event-dot cell))
                         (when valid
                           (setq cell (copy-sequence cell))
                           (put-text-property
@@ -912,55 +912,55 @@ on its first visible row."
 ;; * Main Entry Points
 ;; ============================================================
 
-(defun modern-emacs/gcal-day-view (&optional date)
+(defun org-gcal-view-day-view (&optional date)
   "Display a Google Calendar-inspired day view for DATE (or today).
 When called interactively, shows today.  When called from Lisp, DATE
 should be a \"YYYY-MM-DD\" string."
   (interactive)
   (let* ((date-str (or date (format-time-string "%Y-%m-%d")))
-         (blocks (modern-emacs/gcal--collect-blocks date-str))
-         (buf (get-buffer-create modern-emacs/gcal-buffer-name)))
+         (blocks (org-gcal-view--collect-blocks date-str))
+         (buf (get-buffer-create org-gcal-view-buffer-name)))
     (switch-to-buffer buf)
     (setq-local line-spacing 0)
     (setq-local truncate-lines t)
-    (setq modern-emacs/gcal-current-date date-str)
-    (setq modern-emacs/gcal-current-view 'day)
+    (setq org-gcal-view-current-date date-str)
+    (setq org-gcal-view-current-view 'day)
     (let ((inhibit-read-only t))
-      (modern-emacs/gcal-mode)
-      (modern-emacs/gcal--render-day date-str blocks))
+      (org-gcal-view-mode)
+      (org-gcal-view--render-day date-str blocks))
     (goto-char (point-min))
     (message "Google Calendar: %d events for %s" (length blocks) date-str)))
 
-(defun modern-emacs/gcal-week-view (&optional date)
+(defun org-gcal-view-week-view (&optional date)
   "Display a Google Calendar-inspired week view for DATE (or today)."
   (interactive)
   (let* ((date-str (or date (format-time-string "%Y-%m-%d")))
-         (week-start (modern-emacs/gcal--week-start date-str))
-         (buf (get-buffer-create modern-emacs/gcal-buffer-name)))
+         (week-start (org-gcal-view--week-start date-str))
+         (buf (get-buffer-create org-gcal-view-buffer-name)))
     (switch-to-buffer buf)
     (setq-local line-spacing 0)
     (setq-local truncate-lines t)
-    (setq modern-emacs/gcal-current-date date-str)
-    (setq modern-emacs/gcal-current-view 'week)
+    (setq org-gcal-view-current-date date-str)
+    (setq org-gcal-view-current-view 'week)
     (let ((inhibit-read-only t))
-      (modern-emacs/gcal-mode)
-      (modern-emacs/gcal--render-week week-start))
+      (org-gcal-view-mode)
+      (org-gcal-view--render-week week-start))
     (goto-char (point-min))
     (message "Google Calendar: Week view starting %s" week-start)))
 
-(defun modern-emacs/gcal-month-view (&optional date)
+(defun org-gcal-view-month-view (&optional date)
   "Display a Google Calendar-inspired month view for DATE (or today)."
   (interactive)
   (let* ((date-str (or date (format-time-string "%Y-%m-%d")))
-         (buf (get-buffer-create modern-emacs/gcal-buffer-name)))
+         (buf (get-buffer-create org-gcal-view-buffer-name)))
     (switch-to-buffer buf)
     (setq-local line-spacing 0)
     (setq-local truncate-lines t)
-    (setq modern-emacs/gcal-current-date date-str)
-    (setq modern-emacs/gcal-current-view 'month)
+    (setq org-gcal-view-current-date date-str)
+    (setq org-gcal-view-current-view 'month)
     (let ((inhibit-read-only t))
-      (modern-emacs/gcal-mode)
-      (modern-emacs/gcal--render-month date-str))
+      (org-gcal-view-mode)
+      (org-gcal-view--render-month date-str))
     (goto-char (point-min))
     (message "Google Calendar: Month view for %s" date-str)))
 
@@ -968,80 +968,80 @@ should be a \"YYYY-MM-DD\" string."
 ;; * Navigation Commands
 ;; ============================================================
 
-(defun modern-emacs/gcal-today ()
+(defun org-gcal-view-today ()
   "Go to today's date."
   (interactive)
-  (modern-emacs/gcal-switch-to-date (format-time-string "%Y-%m-%d")))
+  (org-gcal-view-switch-to-date (format-time-string "%Y-%m-%d")))
 
-(defun modern-emacs/gcal-switch-to-date (date-str)
+(defun org-gcal-view-switch-to-date (date-str)
   "Redisplay the current view at DATE-STR."
-  (pcase modern-emacs/gcal-current-view
-    ('day (modern-emacs/gcal-day-view date-str))
-    ('week (modern-emacs/gcal-week-view date-str))
-    ('month (modern-emacs/gcal-month-view date-str))))
+  (pcase org-gcal-view-current-view
+    ('day (org-gcal-view-day-view date-str))
+    ('week (org-gcal-view-week-view date-str))
+    ('month (org-gcal-view-month-view date-str))))
 
-(defun modern-emacs/gcal-next ()
+(defun org-gcal-view-next ()
   "Go to next day/week/month depending on current view."
   (interactive)
-  (let ((date-str modern-emacs/gcal-current-date))
-    (pcase modern-emacs/gcal-current-view
-      ('day (modern-emacs/gcal-day-view
-             (modern-emacs/gcal--date-add-days date-str 1)))
-      ('week (modern-emacs/gcal-week-view
-              (modern-emacs/gcal--date-add-days date-str 7)))
+  (let ((date-str org-gcal-view-current-date))
+    (pcase org-gcal-view-current-view
+      ('day (org-gcal-view-day-view
+             (org-gcal-view--date-add-days date-str 1)))
+      ('week (org-gcal-view-week-view
+              (org-gcal-view--date-add-days date-str 7)))
       ('month (let* ((parts (split-string date-str "-"))
                      (year (string-to-number (nth 0 parts)))
                      (month (string-to-number (nth 1 parts)))
                      (next-month (if (= month 12) 1 (1+ month)))
                      (next-year (if (= month 12) (1+ year) year)))
-                (modern-emacs/gcal-month-view
+                (org-gcal-view-month-view
                  (format "%04d-%02d-01" next-year next-month)))))))
 
-(defun modern-emacs/gcal-previous ()
+(defun org-gcal-view-previous ()
   "Go to previous day/week/month depending on current view."
   (interactive)
-  (let ((date-str modern-emacs/gcal-current-date))
-    (pcase modern-emacs/gcal-current-view
-      ('day (modern-emacs/gcal-day-view
-             (modern-emacs/gcal--date-add-days date-str -1)))
-      ('week (modern-emacs/gcal-week-view
-              (modern-emacs/gcal--date-add-days date-str -7)))
+  (let ((date-str org-gcal-view-current-date))
+    (pcase org-gcal-view-current-view
+      ('day (org-gcal-view-day-view
+             (org-gcal-view--date-add-days date-str -1)))
+      ('week (org-gcal-view-week-view
+              (org-gcal-view--date-add-days date-str -7)))
       ('month (let* ((parts (split-string date-str "-"))
                      (year (string-to-number (nth 0 parts)))
                      (month (string-to-number (nth 1 parts)))
                      (prev-month (if (= month 1) 12 (1- month)))
                      (prev-year (if (= month 1) (1- year) year)))
-                (modern-emacs/gcal-month-view
+                (org-gcal-view-month-view
                  (format "%04d-%02d-01" prev-year prev-month)))))))
 
-(defun modern-emacs/gcal-switch-to-day ()
+(defun org-gcal-view-switch-to-day ()
   "Switch to day view."
   (interactive)
-  (setq modern-emacs/gcal-current-view 'day)
-  (modern-emacs/gcal-day-view modern-emacs/gcal-current-date))
+  (setq org-gcal-view-current-view 'day)
+  (org-gcal-view-day-view org-gcal-view-current-date))
 
-(defun modern-emacs/gcal-switch-to-week ()
+(defun org-gcal-view-switch-to-week ()
   "Switch to week view."
   (interactive)
-  (setq modern-emacs/gcal-current-view 'week)
-  (modern-emacs/gcal-week-view modern-emacs/gcal-current-date))
+  (setq org-gcal-view-current-view 'week)
+  (org-gcal-view-week-view org-gcal-view-current-date))
 
-(defun modern-emacs/gcal-switch-to-month ()
+(defun org-gcal-view-switch-to-month ()
   "Switch to month view."
   (interactive)
-  (setq modern-emacs/gcal-current-view 'month)
-  (modern-emacs/gcal-month-view modern-emacs/gcal-current-date))
+  (setq org-gcal-view-current-view 'month)
+  (org-gcal-view-month-view org-gcal-view-current-date))
 
-(defun modern-emacs/gcal-refresh ()
+(defun org-gcal-view-refresh ()
   "Refresh the current view."
   (interactive)
-  (modern-emacs/gcal-switch-to-date modern-emacs/gcal-current-date))
+  (org-gcal-view-switch-to-date org-gcal-view-current-date))
 
 ;; ============================================================
 ;; * Focus: Point, Arrows and Mouse
 ;; ============================================================
 
-(defun modern-emacs/gcal--event-targets ()
+(defun org-gcal-view--event-targets ()
   "Return distinct events in the buffer, top to bottom.
 Each target is \(BUFFER-POS FILE ENTRY-POS TITLE).  Scans
 `gcal-pos' rather than `gcal-file': adjacent blocks often come
@@ -1064,7 +1064,7 @@ from the same file, and a property walk needs changing values."
                       targets))))))
       (nreverse targets))))
 
-(defun modern-emacs/gcal--date-cell-targets ()
+(defun org-gcal-view--date-cell-targets ()
   "Return month-view day cells carrying `gcal-jump-date', in order.
 Each target is \(BUFFER-POS nil nil DATE)."
   (save-excursion
@@ -1081,26 +1081,26 @@ Each target is \(BUFFER-POS nil nil DATE)."
                 (push (list (point) nil nil date) targets))))))
       (nreverse targets))))
 
-(defun modern-emacs/gcal--focus-targets ()
+(defun org-gcal-view--focus-targets ()
   "Return focusable targets for the current view."
-  (if (eq modern-emacs/gcal-current-view 'month)
-      (modern-emacs/gcal--date-cell-targets)
-    (modern-emacs/gcal--event-targets)))
+  (if (eq org-gcal-view-current-view 'month)
+      (org-gcal-view--date-cell-targets)
+    (org-gcal-view--event-targets)))
 
-(defun modern-emacs/gcal--current-target-key ()
+(defun org-gcal-view--current-target-key ()
   "Key identifying what is under point, or nil."
-  (if (eq modern-emacs/gcal-current-view 'month)
+  (if (eq org-gcal-view-current-view 'month)
       (get-text-property (point) 'gcal-jump-date)
     (let ((file (get-text-property (point) 'gcal-file))
           (pos (get-text-property (point) 'gcal-pos)))
       (when (and file pos) (cons file pos)))))
 
-(defun modern-emacs/gcal--target-key (target)
-  (if (eq modern-emacs/gcal-current-view 'month)
+(defun org-gcal-view--target-key (target)
+  (if (eq org-gcal-view-current-view 'month)
       (nth 3 target)
     (cons (nth 1 target) (nth 2 target))))
 
-(defun modern-emacs/gcal--focus-at (pos label)
+(defun org-gcal-view--focus-at (pos label)
   "Move point to POS, make the cursor visible and pulse the line.
 LABEL, when non-nil, is shown in the echo area."
   (goto-char pos)
@@ -1112,43 +1112,43 @@ LABEL, when non-nil, is shown in the echo area."
     (pulse-momentary-highlight-one-line (point)))
   (when label (message "%s" label)))
 
-(defun modern-emacs/gcal-next-focus (&optional backward)
+(defun org-gcal-view-next-focus (&optional backward)
   "Move focus to the next event (or day cell in month view).
 With BACKWARD move to the previous one.  Bound to <down>/<up>."
   (interactive)
-  (let* ((targets (modern-emacs/gcal--focus-targets))
+  (let* ((targets (org-gcal-view--focus-targets))
          (_ (unless targets
               (user-error "Nothing to navigate here")))
-         (cur-key (modern-emacs/gcal--current-target-key))
+         (cur-key (org-gcal-view--current-target-key))
          (next (cl-find-if
                 (lambda (tgt)
                   (and (or (> (car tgt) (point))
                            ;; Same segment start counts as "on it";
                            ;; skip past all segments of current key.
                            (= (car tgt) (point)))
-                       (not (equal (modern-emacs/gcal--target-key tgt)
+                       (not (equal (org-gcal-view--target-key tgt)
                                    cur-key))))
                 (if backward (reverse targets) targets))))
     (cond
      (next
-      (modern-emacs/gcal--focus-at
+      (org-gcal-view--focus-at
        (car next)
        (or (nth 3 next) "")))
      (backward
       (user-error "At first %s"
-                  (if (eq modern-emacs/gcal-current-view 'month)
+                  (if (eq org-gcal-view-current-view 'month)
                       "day" "event")))
      (t
       (user-error "At last %s"
-                  (if (eq modern-emacs/gcal-current-view 'month)
+                  (if (eq org-gcal-view-current-view 'month)
                       "day" "event"))))))
 
-(defun modern-emacs/gcal-previous-focus ()
+(defun org-gcal-view-previous-focus ()
   "Move focus to the previous event/day cell.  Bound to <up>."
   (interactive)
-  (modern-emacs/gcal-next-focus 'backward))
+  (org-gcal-view-next-focus 'backward))
 
-(defun modern-emacs/gcal-open-at-point ()
+(defun org-gcal-view-open-at-point ()
   "Open the thing under point.
 On an event: visit its org entry in another window (switching to
 it).  On a month day cell: jump to that day's view."
@@ -1161,10 +1161,10 @@ it).  On a month day cell: jump to that day's view."
       (pop-to-buffer (find-file-noselect file))
       (goto-char pos)
       (org-fold-show-context))
-     (date (modern-emacs/gcal-day-view date))
+     (date (org-gcal-view-day-view date))
      (t (user-error "Nothing under point")))))
 
-(defun modern-emacs/gcal-preview-event ()
+(defun org-gcal-view-preview-event ()
   "Preview the event at point in a split window below, keeping
 focus on the calendar.  On a month day cell, jump to that day."
   (interactive)
@@ -1185,46 +1185,46 @@ focus on the calendar.  On a month day cell, jump to that day."
           (recenter-top-bottom 2)))
       (select-window cal-win)
       (message "%s" (or (get-text-property (point) 'gcal-title) "")))
-     (date (modern-emacs/gcal-day-view date))
+     (date (org-gcal-view-day-view date))
      (t (user-error "Nothing under point")))))
 
-(defun modern-emacs/gcal-click (event)
+(defun org-gcal-view-click (event)
   "Mouse-1 handler: place a visible cursor at EVENT and open it.
 Clicking empty grid space just shows the cursor there."
   (interactive "e")
   (mouse-set-point event)
   (setq-local cursor-type 'bar)
   (condition-case nil
-      (modern-emacs/gcal-open-at-point)
+      (org-gcal-view-open-at-point)
     (user-error nil)))
 
 ;; ============================================================
 ;; * Search ("/")
 ;; ============================================================
 
-(defun modern-emacs/gcal--view-dates ()
+(defun org-gcal-view--view-dates ()
   "Return the list of dates covered by the current view."
-  (pcase modern-emacs/gcal-current-view
-    ('day (list modern-emacs/gcal-current-date))
+  (pcase org-gcal-view-current-view
+    ('day (list org-gcal-view-current-date))
     ('week (cl-loop for i from 0 below 7
                     collect
-                    (modern-emacs/gcal--date-add-days
-                     (modern-emacs/gcal--week-start
-                      modern-emacs/gcal-current-date)
+                    (org-gcal-view--date-add-days
+                     (org-gcal-view--week-start
+                      org-gcal-view-current-date)
                      i)))
-    ('month (let* ((parts (split-string modern-emacs/gcal-current-date "-"))
+    ('month (let* ((parts (split-string org-gcal-view-current-date "-"))
                    (year (string-to-number (nth 0 parts)))
                    (month (string-to-number (nth 1 parts)))
                    (last (calendar-last-day-of-month month year)))
               (cl-loop for d from 1 to last
                        collect (format "%04d-%02d-%02d" year month d))))))
 
-(defun modern-emacs/gcal--search-candidates (regexp dates)
+(defun org-gcal-view--search-candidates (regexp dates)
   "Collect search candidates from DATES whose title matches REGEXP.
 Returns alist of label -> block."
   (let ((blocks
          (apply #'append
-                (mapcar #'modern-emacs/gcal--collect-blocks dates))))
+                (mapcar #'org-gcal-view--collect-blocks dates))))
     (delq nil
           (mapcar
            (lambda (b)
@@ -1238,12 +1238,12 @@ Returns alist of label -> block."
                      b)))
            blocks))))
 
-(defun modern-emacs/gcal-search ()
+(defun org-gcal-view-search ()
   "Search events in the displayed period by title (regexp).
 Selecting a result opens that day and focuses the event."
   (interactive)
-  (let* ((dates (modern-emacs/gcal--view-dates))
-         (cands (modern-emacs/gcal--search-candidates
+  (let* ((dates (org-gcal-view--view-dates))
+         (cands (org-gcal-view--search-candidates
                  (read-string (format "Search titles in %s (%s): "
                                       (car dates) (length dates))
                               "")
@@ -1252,7 +1252,7 @@ Selecting a result opens that day and focuses the event."
       (0 (user-error "No matching events"))
       (_ (let* ((sel (completing-read "Event: " cands nil t))
                 (b (cdr (assoc sel cands))))
-           (modern-emacs/gcal-day-view (nth 8 b))
+           (org-gcal-view-day-view (nth 8 b))
            ;; Land on the event's first rendered row if present
            (let ((target (list (nth 4 b) (nth 5 b))))
              (save-excursion
@@ -1269,14 +1269,14 @@ Selecting a result opens that day and focuses the event."
              (when (equal (list (get-text-property (point) 'gcal-file)
                                 (get-text-property (point) 'gcal-pos))
                           target)
-               (modern-emacs/gcal--focus-at
+               (org-gcal-view--focus-at
                 (point) (or (nth 2 b) "")))))))))
 
 ;; ============================================================
 ;; * Event Actions (Clocking Support)
 ;; ============================================================
 
-(defun modern-emacs/gcal--event-at-point ()
+(defun org-gcal-view--event-at-point ()
   "Return (FILE . POS) for the event under point, or signal user-error."
   (let ((file (get-text-property (point) 'gcal-file))
         (pos (get-text-property (point) 'gcal-pos)))
@@ -1284,27 +1284,27 @@ Selecting a result opens that day and focuses the event."
       (user-error "No event under point"))
     (cons file pos)))
 
-(defun modern-emacs/gcal-goto-event ()
+(defun org-gcal-view-goto-event ()
   "Go to the org entry for the event at point, switching to it."
   (interactive)
-  (modern-emacs/gcal-open-at-point))
+  (org-gcal-view-open-at-point))
 
-(defun modern-emacs/gcal-edit-event ()
+(defun org-gcal-view-edit-event ()
   "Edit the event at point."
   (interactive)
-  (modern-emacs/gcal-open-at-point))
+  (org-gcal-view-open-at-point))
 
-(defun modern-emacs/gcal-clock-in ()
+(defun org-gcal-view-clock-in ()
   "Clock in to the event at point."
   (interactive)
-  (let ((ev (modern-emacs/gcal--event-at-point)))
+  (let ((ev (org-gcal-view--event-at-point)))
     (with-current-buffer (find-file-noselect (car ev))
       (goto-char (cdr ev))
       (org-clock-in)
       (message "Clocked in: %s"
                (org-entry-get (point) "ITEM")))))
 
-(defun modern-emacs/gcal-clock-out ()
+(defun org-gcal-view-clock-out ()
   "Clock out of the current clock."
   (interactive)
   (if (org-clocking-p)
@@ -1313,7 +1313,7 @@ Selecting a result opens that day and focuses the event."
         (message "Clocked out"))
     (user-error "No active clock")))
 
-(defun modern-emacs/gcal-create-event (title start end)
+(defun org-gcal-view-create-event (title start end)
   "Create a new event TITLE on the currently displayed date.
 START and END are \"HH:MM\" strings; the event is filed into the
 first agenda file (or `org-default-notes-file') as an active
@@ -1322,14 +1322,14 @@ timestamp, then the view is refreshed."
    (list (read-string "Event title: ")
          (read-string "Start (HH:MM): " "09:00")
          (read-string "End (HH:MM): " "10:00")))
-  (unless modern-emacs/gcal-current-date
+  (unless org-gcal-view-current-date
     (user-error "No current date; open a calendar view first"))
   (unless (and (string-match "\\`[0-9]\\{1,2\\}:[0-9]\\{2\\}\\'" start)
                (string-match "\\`[0-9]\\{1,2\\}:[0-9]\\{2\\}\\'" end))
     (user-error "Times must be HH:MM"))
-  (let* ((date-str modern-emacs/gcal-current-date)
+  (let* ((date-str org-gcal-view-current-date)
          (abbr (format-time-string
-                "%a" (modern-emacs/gcal--parse-date-str date-str)))
+                "%a" (org-gcal-view--parse-date-str date-str)))
          (file (or (car (org-agenda-files)) org-default-notes-file)))
     (unless file
       (user-error "No org-agenda-files configured"))
@@ -1338,61 +1338,61 @@ timestamp, then the view is refreshed."
       (insert (format "\n* %s\n  <%s %s %s-%s>\n"
                       title date-str abbr start end))
       (save-buffer))
-    (modern-emacs/gcal-refresh)
+    (org-gcal-view-refresh)
     (message "Created event: %s %s-%s in %s" title start end file)))
 
 ;; ============================================================
 ;; * Keymap - Google Calendar Shortcuts
 ;; ============================================================
 
-(defun modern-emacs/gcal-quit ()
+(defun org-gcal-view-quit ()
   "Quit the Google Calendar buffer."
   (interactive)
-  (when (buffer-live-p (get-buffer modern-emacs/gcal-buffer-name))
-    (kill-buffer modern-emacs/gcal-buffer-name)))
+  (when (buffer-live-p (get-buffer org-gcal-view-buffer-name))
+    (kill-buffer org-gcal-view-buffer-name)))
 
-(defvar modern-emacs/gcal-mode-map
+(defvar org-gcal-view-mode-map
   (let ((map (make-sparse-keymap)))
     ;; Navigation - Google Calendar style (periods)
-    (define-key map (kbd "d") 'modern-emacs/gcal-switch-to-day)
-    (define-key map (kbd "w") 'modern-emacs/gcal-switch-to-week)
-    (define-key map (kbd "m") 'modern-emacs/gcal-switch-to-month)
-    (define-key map (kbd "t") 'modern-emacs/gcal-today)
-    (define-key map (kbd "j") 'modern-emacs/gcal-next)
-    (define-key map (kbd "k") 'modern-emacs/gcal-previous)
-    (define-key map (kbd "n") 'modern-emacs/gcal-next)
-    (define-key map (kbd "p") 'modern-emacs/gcal-previous)
-    (define-key map (kbd "f") 'modern-emacs/gcal-next)
-    (define-key map (kbd "b") 'modern-emacs/gcal-previous)
-    (define-key map [left] 'modern-emacs/gcal-previous)
-    (define-key map [right] 'modern-emacs/gcal-next)
+    (define-key map (kbd "d") 'org-gcal-view-switch-to-day)
+    (define-key map (kbd "w") 'org-gcal-view-switch-to-week)
+    (define-key map (kbd "m") 'org-gcal-view-switch-to-month)
+    (define-key map (kbd "t") 'org-gcal-view-today)
+    (define-key map (kbd "j") 'org-gcal-view-next)
+    (define-key map (kbd "k") 'org-gcal-view-previous)
+    (define-key map (kbd "n") 'org-gcal-view-next)
+    (define-key map (kbd "p") 'org-gcal-view-previous)
+    (define-key map (kbd "f") 'org-gcal-view-next)
+    (define-key map (kbd "b") 'org-gcal-view-previous)
+    (define-key map [left] 'org-gcal-view-previous)
+    (define-key map [right] 'org-gcal-view-next)
     ;; Focus - move between events / day cells
-    (define-key map [down] 'modern-emacs/gcal-next-focus)
-    (define-key map [up] 'modern-emacs/gcal-previous-focus)
+    (define-key map [down] 'org-gcal-view-next-focus)
+    (define-key map [up] 'org-gcal-view-previous-focus)
     ;; View refresh
-    (define-key map (kbd "g") 'modern-emacs/gcal-refresh)
+    (define-key map (kbd "g") 'org-gcal-view-refresh)
     ;; Event actions
-    (define-key map (kbd "RET") 'modern-emacs/gcal-open-at-point)
-    (define-key map (kbd "TAB") 'modern-emacs/gcal-preview-event)
-    (define-key map (kbd "e") 'modern-emacs/gcal-edit-event)
-    (define-key map (kbd "c") 'modern-emacs/gcal-create-event)
+    (define-key map (kbd "RET") 'org-gcal-view-open-at-point)
+    (define-key map (kbd "TAB") 'org-gcal-view-preview-event)
+    (define-key map (kbd "e") 'org-gcal-view-edit-event)
+    (define-key map (kbd "c") 'org-gcal-view-create-event)
     ;; Search
-    (define-key map (kbd "/") 'modern-emacs/gcal-search)
+    (define-key map (kbd "/") 'org-gcal-view-search)
     ;; Mouse: click anywhere; events open, month days jump
-    (define-key map [mouse-1] 'modern-emacs/gcal-click)
+    (define-key map [mouse-1] 'org-gcal-view-click)
     ;; Clocking
-    (define-key map (kbd "i") 'modern-emacs/gcal-clock-in)
-    (define-key map (kbd "o") 'modern-emacs/gcal-clock-out)
+    (define-key map (kbd "i") 'org-gcal-view-clock-in)
+    (define-key map (kbd "o") 'org-gcal-view-clock-out)
     ;; Quit
-    (define-key map (kbd "q") 'modern-emacs/gcal-quit)
+    (define-key map (kbd "q") 'org-gcal-view-quit)
     map)
-  "Keymap for `modern-emacs/gcal-mode'.")
+  "Keymap for `org-gcal-view-mode'.")
 
 ;; ============================================================
 ;; * Major Mode
 ;; ============================================================
 
-(define-derived-mode modern-emacs/gcal-mode special-mode "GCal"
+(define-derived-mode org-gcal-view-mode special-mode "GCal"
   "Major mode for the Google Calendar interface."
   (setq-local cursor-type nil)
   (setq-local truncate-lines t)
@@ -1403,34 +1403,34 @@ timestamp, then the view is refreshed."
 ;; * Interactive Commands for Org Agenda Integration
 ;; ============================================================
 
-(defun modern-emacs/gcal-open ()
+(defun org-gcal-view-open ()
   "Open Google Calendar in day view."
   (interactive)
-  (modern-emacs/gcal-day-view))
+  (org-gcal-view-day-view))
 
-(defun modern-emacs/gcal-open-week ()
+(defun org-gcal-view-open-week ()
   "Open Google Calendar in week view."
   (interactive)
-  (modern-emacs/gcal-week-view))
+  (org-gcal-view-week-view))
 
-(defun modern-emacs/gcal-open-month ()
+(defun org-gcal-view-open-month ()
   "Open Google Calendar in month view."
   (interactive)
-  (modern-emacs/gcal-month-view))
+  (org-gcal-view-month-view))
 
 ;; ============================================================
 ;; * Keybindings in Org Agenda
 ;; ============================================================
 
 (with-eval-after-load 'org-agenda
-  (define-key org-agenda-mode-map (kbd "C-c C-c") 'modern-emacs/gcal-day-view)
-  (define-key org-agenda-mode-map (kbd "C-c C-w") 'modern-emacs/gcal-week-view)
-  (define-key org-agenda-mode-map (kbd "C-c C-m") 'modern-emacs/gcal-month-view))
+  (define-key org-agenda-mode-map (kbd "C-c C-c") 'org-gcal-view-day-view)
+  (define-key org-agenda-mode-map (kbd "C-c C-w") 'org-gcal-view-week-view)
+  (define-key org-agenda-mode-map (kbd "C-c C-m") 'org-gcal-view-month-view))
 
 ;; Global keybindings
-(global-set-key (kbd "C-c g d") 'modern-emacs/gcal-open)
-(global-set-key (kbd "C-c g w") 'modern-emacs/gcal-open-week)
-(global-set-key (kbd "C-c g m") 'modern-emacs/gcal-open-month)
+(global-set-key (kbd "C-c g d") 'org-gcal-view-open)
+(global-set-key (kbd "C-c g w") 'org-gcal-view-open-week)
+(global-set-key (kbd "C-c g m") 'org-gcal-view-open-month)
 
 ;; ============================================================
 ;; * Provide module
