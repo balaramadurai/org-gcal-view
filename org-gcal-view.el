@@ -1130,13 +1130,12 @@ Each target is \(BUFFER-POS nil nil DATE)."
              collect (org-gcal-view--date-add-days start i))))
 
 (defun org-gcal-view--focus-at (pos label)
-  "Move point to POS, make the cursor visible and pulse the line.
-LABEL, when non-nil, is shown in the echo area."
+  "Move point to POS and pulse the line.  LABEL, when non-nil, is
+shown in the echo area.  Scrolling is left to Emacs's normal
+minimal-scroll behavior, so only the cursor moves, not the window."
   (goto-char pos)
   ;; The mode hides the cursor; reveal it once the user navigates.
   (setq-local cursor-type 'bar)
-  (when (get-buffer-window nil t)
-    (recenter-top-bottom 0))
   (when (fboundp 'pulse-momentary-highlight-one-line)
     (pulse-momentary-highlight-one-line (point)))
   (when label (message "%s" label)))
@@ -1160,10 +1159,11 @@ In week view, stays within the same day as point."
          (cur-key (org-gcal-view--current-target-key))
          (next (cl-find-if
                 (lambda (tgt)
-                  (and (or (> (car tgt) (point))
-                           ;; Same segment start counts as "on it";
-                           ;; skip past all segments of current key.
-                           (= (car tgt) (point)))
+                  (and (if backward
+                           (<= (car tgt) (point))
+                         ;; Same segment start counts as "on it";
+                         ;; skip past all segments of current key.
+                         (>= (car tgt) (point)))
                        (not (equal (org-gcal-view--target-key tgt)
                                    cur-key))))
                 (if backward (reverse targets) targets))))

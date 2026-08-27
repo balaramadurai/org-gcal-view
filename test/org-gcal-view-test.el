@@ -186,7 +186,29 @@ file, and run BODY."
       (org-gcal-view-next-focus)
       (should (equal (get-text-property (point) 'gcal-title) "Late"))
       ;; "Other Day" is on Tuesday, so this must not cross into it.
-      (should-error (org-gcal-view-next-focus) :type 'user-error))))
+      (should-error (org-gcal-view-next-focus) :type 'user-error)
+      ;; Backward must actually go backward, not repeat the forward hop.
+      (org-gcal-view-previous-focus)
+      (should (equal (get-text-property (point) 'gcal-title) "Early"))
+      (should-error (org-gcal-view-previous-focus) :type 'user-error))))
+
+(ert-deftest org-gcal-view-test-day-view-up-down-through-three-events ()
+  (org-gcal-view-test-with-agenda-file
+      "* First\n  <2026-08-27 Thu 07:00-08:00>\n* Second\n  <2026-08-27 Thu 09:00-10:00>\n* Third\n  <2026-08-27 Thu 11:00-12:00>\n"
+    (org-gcal-view-day-view "2026-08-27")
+    (with-current-buffer org-gcal-view-buffer-name
+      (goto-char (caar (org-gcal-view--event-targets)))
+      (should (equal (get-text-property (point) 'gcal-title) "First"))
+      (org-gcal-view-next-focus)
+      (should (equal (get-text-property (point) 'gcal-title) "Second"))
+      (org-gcal-view-next-focus)
+      (should (equal (get-text-property (point) 'gcal-title) "Third"))
+      (should-error (org-gcal-view-next-focus) :type 'user-error)
+      (org-gcal-view-previous-focus)
+      (should (equal (get-text-property (point) 'gcal-title) "Second"))
+      (org-gcal-view-previous-focus)
+      (should (equal (get-text-property (point) 'gcal-title) "First"))
+      (should-error (org-gcal-view-previous-focus) :type 'user-error))))
 
 ;; ------------------------------------------------------------
 ;; Jump to date
