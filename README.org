@@ -17,11 +17,15 @@ A Google Calendar-inspired interface for Emacs, built on top of `org-agenda-file
 :PROPERTIES:
 :CUSTOM_ID: usage
 :END:
-- ~M-x modern-emacs/gcal-day-view~ / ~modern-emacs/gcal-week-view~ / ~modern-emacs/gcal-month-view~
+- ~M-x org-gcal-view-day-view~ / ~org-gcal-view-week-view~ / ~org-gcal-view-month-view~
 - Global keys: ~C-c g d~ (day), ~C-c g w~ (week), ~C-c g m~ (month)
 - In an org-agenda buffer: ~C-c C-c~ (day), ~C-c C-w~ (week), ~C-c C-m~ (month)
 
 Inside the calendar buffer: ~d~/~w~/~m~ switch views, ~t~ jumps to today,
-~j~/~k~/~n~/~p~/~f~/~b~ and the arrow keys move forward/back, ~<up>~/~<down>~ move
-focus between events, ~TAB~ previews an event in a split, ~RET~ opens it,
-~/~ searches titles, ~i~/~o~ clock in/out, ~c~ creates a new event, ~q~ quits.
+~j~ opens a calendar popup to jump to any date, ~k~/~n~/~p~/~f~/~b~ move
+forward/back a day/week/month. ~<up>~/~<down>~ move focus between events
+(restricted to the same day, in week view); in week view ~<left>~/~<right>~
+instead move focus to an event on the adjacent day, while in day/month view
+they move forward/back like ~n~/~p~. ~TAB~ previews an event in a split,
+~RET~ opens it, ~/~ searches titles, ~i~/~o~ clock in/out, ~c~ creates a new
+event, ~q~ quits.

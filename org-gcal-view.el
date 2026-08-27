@@ -457,8 +457,9 @@ non-empty lane lists sorted by start time."
 ;; * All-day Section
 ;; ============================================================
 
-(defun org-gcal-view--allday-chip (b width)
-  "Render all-day block B as a colored chip WIDTH columns wide."
+(defun org-gcal-view--allday-chip (b width date)
+  "Render all-day block B as a colored chip WIDTH columns wide.
+DATE is the day (YYYY-MM-DD) this chip is shown under."
   (let* ((title (or (nth 2 b) ""))
          (kind (nth 3 b))
          (file (nth 4 b))
@@ -475,13 +476,15 @@ non-empty lane lists sorted by start time."
                                    (if live " [clocking]" ""))))))
     (add-text-properties 0 (length txt)
                          (list 'gcal-file file 'gcal-pos pos
-                               'gcal-title title
+                               'gcal-title title 'gcal-date date
+                               'gcal-start-min 0
                                'mouse-face 'highlight)
                          txt)
     txt))
 
-(defun org-gcal-view--render-allday (blocks avail)
+(defun org-gcal-view--render-allday (blocks avail date)
   "Insert an all-day section for BLOCKS within AVAIL columns.
+DATE is the day (YYYY-MM-DD) these all-day blocks belong to.
 Returns the number of lines inserted (0 if no blocks)."
   (if (null blocks)
       0
@@ -495,7 +498,7 @@ Returns the number of lines inserted (0 if no blocks)."
             (push "\n" out)
             (setq lines (1+ lines) x 0
                   w (min avail (+ 3 (string-width (or (nth 2 b) ""))))))
-          (push (org-gcal-view--allday-chip b w) out)
+          (push (org-gcal-view--allday-chip b w date) out)
           (setq x (+ x w))))
       (insert (apply #'concat (nreverse out)) "\n")
       (1+ lines))))
@@ -504,11 +507,12 @@ Returns the number of lines inserted (0 if no blocks)."
 ;; * Day View Rendering
 ;; ============================================================
 
-(defun org-gcal-view--render-block-cell (b mins lw &optional grid-mins)
+(defun org-gcal-view--render-block-cell (b mins lw &optional grid-mins date)
   "Render one grid cell for block B at slot minute MINS.
 LW is the lane width; GRID-MINS is the first minute shown by the
-grid (blocks starting before it are clipped).  The title shows once,
-on the first visible row of the block - later rows stay as a solid
+grid (blocks starting before it are clipped).  DATE is the day
+(YYYY-MM-DD) this cell belongs to.  The title shows once, on the
+first visible row of the block - later rows stay as a solid
 colored bar.  help-echo carries the full name and details."
   (let* ((start-mins (nth 0 b))
          (end-mins (nth 1 b))
@@ -557,7 +561,8 @@ colored bar.  help-echo carries the full name and details."
                        'help-echo tip))))
     (add-text-properties 0 (length txt)
                          (list 'gcal-file file 'gcal-pos pos
-                               'gcal-title title
+                               'gcal-title title 'gcal-date date
+                               'gcal-start-min start-mins
                                'mouse-face 'highlight)
                          txt)
     txt))
@@ -590,7 +595,7 @@ count adapts so every event stays visible."
              'face 'org-gcal-view-day-title)
             "\n\n")
     ;; All-day events sit between the title and the time grid
-    (let ((ad-lines (org-gcal-view--render-allday allday avail)))
+    (let ((ad-lines (org-gcal-view--render-allday allday avail date-str)))
       (let ((slot-idx s0))
         (while (< slot-idx s1)
           (let* ((mins (* slot-idx slot))
@@ -610,7 +615,7 @@ count adapts so every event stays visible."
                                      lane)))
                              (if b
                                  (org-gcal-view--render-block-cell
-                                  b mins lw (* h0 60))
+                                  b mins lw (* h0 60) date-str)
                                (make-string lw ?\s)))))
                  (line-str (concat "  " label (mapconcat #'identity cells ""))))
             (when (< (string-width line-str) grid-w)
@@ -726,7 +731,7 @@ so it never covers events."
                  (let ((chip (nth j ads)))
                    (if chip
                        (insert (org-gcal-view--allday-chip
-                                chip (- col-width 1)) " ")
+                                chip (- col-width 1) date) " ")
                      (insert (propertize
                               (make-string col-width ?\s)
                               'face (if (string= date today)
@@ -825,6 +830,8 @@ on its first visible row."
                  'gcal-file (nth 4 b)
                  'gcal-pos (nth 5 b)
                  'gcal-title (or (nth 2 b) "")
+                 'gcal-date date
+                 'gcal-start-min (nth 0 b)
                  'mouse-face 'highlight))
       (propertize (make-string col-width ?\s)
                   'face (if (string= date today)
@@ -1043,8 +1050,8 @@ should be a \"YYYY-MM-DD\" string."
 
 (defun org-gcal-view--event-targets ()
   "Return distinct events in the buffer, top to bottom.
-Each target is \(BUFFER-POS FILE ENTRY-POS TITLE).  Scans
-`gcal-pos' rather than `gcal-file': adjacent blocks often come
+Each target is \(BUFFER-POS FILE ENTRY-POS TITLE DATE START-MIN).
+Scans `gcal-pos' rather than `gcal-file': adjacent blocks often come
 from the same file, and a property walk needs changing values."
   (save-excursion
     (goto-char (point-min))
@@ -1060,7 +1067,9 @@ from the same file, and a property walk needs changing values."
               (when (and f p (not (gethash (cons f p) seen)))
                 (puthash (cons f p) t seen)
                 (push (list (point) f p
-                            (get-text-property next 'gcal-title))
+                            (get-text-property next 'gcal-title)
+                            (get-text-property next 'gcal-date)
+                            (get-text-property next 'gcal-start-min))
                       targets))))))
       (nreverse targets))))
 
@@ -1100,6 +1109,26 @@ Each target is \(BUFFER-POS nil nil DATE)."
       (nth 3 target)
     (cons (nth 1 target) (nth 2 target))))
 
+(defun org-gcal-view--target-date (target)
+  "Return the day (YYYY-MM-DD) TARGET belongs to."
+  (nth 4 target))
+
+(defun org-gcal-view--target-start-min (target)
+  "Return TARGET's start minute-of-day, or nil if unknown."
+  (nth 5 target))
+
+(defun org-gcal-view--point-date ()
+  "Return the day (YYYY-MM-DD) associated with point, or nil."
+  (or (get-text-property (point) 'gcal-date)
+      (and (eq org-gcal-view-current-view 'day)
+           org-gcal-view-current-date)))
+
+(defun org-gcal-view--week-dates ()
+  "Return the 7 dates (YYYY-MM-DD) of the currently displayed week."
+  (let ((start (org-gcal-view--week-start org-gcal-view-current-date)))
+    (cl-loop for i from 0 below 7
+             collect (org-gcal-view--date-add-days start i))))
+
 (defun org-gcal-view--focus-at (pos label)
   "Move point to POS, make the cursor visible and pulse the line.
 LABEL, when non-nil, is shown in the echo area."
@@ -1114,9 +1143,18 @@ LABEL, when non-nil, is shown in the echo area."
 
 (defun org-gcal-view-next-focus (&optional backward)
   "Move focus to the next event (or day cell in month view).
-With BACKWARD move to the previous one.  Bound to <down>/<up>."
+With BACKWARD move to the previous one.  Bound to <down>/<up>.
+In week view, stays within the same day as point."
   (interactive)
-  (let* ((targets (org-gcal-view--focus-targets))
+  (let* ((same-day (eq org-gcal-view-current-view 'week))
+         (cur-date (and same-day (org-gcal-view--point-date)))
+         (all-targets (org-gcal-view--focus-targets))
+         (targets (if (and same-day cur-date)
+                      (cl-remove-if-not
+                       (lambda (tgt)
+                         (equal (org-gcal-view--target-date tgt) cur-date))
+                       all-targets)
+                    all-targets))
          (_ (unless targets
               (user-error "Nothing to navigate here")))
          (cur-key (org-gcal-view--current-target-key))
@@ -1147,6 +1185,78 @@ With BACKWARD move to the previous one.  Bound to <down>/<up>."
   "Move focus to the previous event/day cell.  Bound to <up>."
   (interactive)
   (org-gcal-view-next-focus 'backward))
+
+(defun org-gcal-view-next-day-focus (&optional backward)
+  "In week view, move focus to an event on the next day.
+With BACKWARD move to the previous day instead.  Among that day's
+events, picks the one whose start time is closest to the current
+event's start time (or the first one, if nothing is focused yet).
+Bound to <right>/<left> in week view."
+  (interactive)
+  (unless (eq org-gcal-view-current-view 'week)
+    (user-error "Day-to-day event navigation only works in week view"))
+  (let* ((targets (org-gcal-view--focus-targets))
+         (_ (unless targets (user-error "Nothing to navigate here")))
+         (dates (org-gcal-view--week-dates))
+         (cur-date (org-gcal-view--point-date))
+         (cur-start (get-text-property (point) 'gcal-start-min))
+         (cur-idx (and cur-date (cl-position cur-date dates :test #'equal)))
+         (idx (if cur-idx
+                  (+ cur-idx (if backward -1 1))
+                (if backward (1- (length dates)) 0))))
+    (while (and (>= idx 0) (< idx (length dates))
+                (not (cl-find-if
+                      (lambda (tgt)
+                        (equal (org-gcal-view--target-date tgt)
+                               (nth idx dates)))
+                      targets)))
+      (setq idx (+ idx (if backward -1 1))))
+    (if (or (< idx 0) (>= idx (length dates)))
+        (user-error "At %s day" (if backward "first" "last"))
+      (let* ((day-targets
+              (cl-remove-if-not
+               (lambda (tgt)
+                 (equal (org-gcal-view--target-date tgt) (nth idx dates)))
+               targets))
+             (chosen
+              (if cur-start
+                  (cl-reduce
+                   (lambda (a b)
+                     (if (<= (abs (- (or (org-gcal-view--target-start-min a) 0)
+                                     cur-start))
+                             (abs (- (or (org-gcal-view--target-start-min b) 0)
+                                     cur-start)))
+                         a b))
+                   day-targets)
+                (car day-targets))))
+        (org-gcal-view--focus-at (car chosen) (or (nth 3 chosen) ""))))))
+
+(defun org-gcal-view-previous-day-focus ()
+  "Move focus to an event on the previous day.  Bound to <left>."
+  (interactive)
+  (org-gcal-view-next-day-focus 'backward))
+
+(defun org-gcal-view-right ()
+  "Move focus to the next day's event in week view.
+In day/month view, go to the next period instead."
+  (interactive)
+  (if (eq org-gcal-view-current-view 'week)
+      (org-gcal-view-next-day-focus)
+    (org-gcal-view-next)))
+
+(defun org-gcal-view-left ()
+  "Move focus to the previous day's event in week view.
+In day/month view, go to the previous period instead."
+  (interactive)
+  (if (eq org-gcal-view-current-view 'week)
+      (org-gcal-view-previous-day-focus)
+    (org-gcal-view-previous)))
+
+(defun org-gcal-view-jump-to-date ()
+  "Prompt for a date via a calendar popup and jump to it.
+Bound to \"j\"."
+  (interactive)
+  (org-gcal-view-switch-to-date (org-read-date nil nil nil "Jump to date: ")))
 
 (defun org-gcal-view-open-at-point ()
   "Open the thing under point.
@@ -1358,15 +1468,15 @@ timestamp, then the view is refreshed."
     (define-key map (kbd "w") 'org-gcal-view-switch-to-week)
     (define-key map (kbd "m") 'org-gcal-view-switch-to-month)
     (define-key map (kbd "t") 'org-gcal-view-today)
-    (define-key map (kbd "j") 'org-gcal-view-next)
+    (define-key map (kbd "j") 'org-gcal-view-jump-to-date)
     (define-key map (kbd "k") 'org-gcal-view-previous)
     (define-key map (kbd "n") 'org-gcal-view-next)
     (define-key map (kbd "p") 'org-gcal-view-previous)
     (define-key map (kbd "f") 'org-gcal-view-next)
     (define-key map (kbd "b") 'org-gcal-view-previous)
-    (define-key map [left] 'org-gcal-view-previous)
-    (define-key map [right] 'org-gcal-view-next)
-    ;; Focus - move between events / day cells
+    (define-key map [left] 'org-gcal-view-left)
+    (define-key map [right] 'org-gcal-view-right)
+    ;; Focus - move between events / day cells (same day in week view)
     (define-key map [down] 'org-gcal-view-next-focus)
     (define-key map [up] 'org-gcal-view-previous-focus)
     ;; View refresh
