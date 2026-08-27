@@ -1236,21 +1236,85 @@ Bound to <right>/<left> in week view."
   (interactive)
   (org-gcal-view-next-day-focus 'backward))
 
+(defun org-gcal-view--row-targets ()
+  "Return distinct events on the current line, left to right.
+Each target is \(BUFFER-POS FILE ENTRY-POS TITLE DATE START-MIN),
+same shape as `org-gcal-view--event-targets' but scoped to one row -
+this is what makes multiple side-by-side lanes in day view (or
+side-by-side all-day chips) into \"events in the same row\"."
+  (save-excursion
+    (let ((bol (line-beginning-position))
+          (eol (line-end-position))
+          (seen (make-hash-table :test 'equal))
+          (targets '()))
+      (goto-char bol)
+      (while (< (point) eol)
+        (let ((next (next-single-property-change (point) 'gcal-pos nil eol)))
+          (goto-char next)
+          (when (< (point) eol)
+            (let* ((p (get-text-property (point) 'gcal-pos))
+                   (f (get-text-property (point) 'gcal-file)))
+              (when (and f p (not (gethash (cons f p) seen)))
+                (puthash (cons f p) t seen)
+                (push (list (point) f p
+                            (get-text-property (point) 'gcal-title)
+                            (get-text-property (point) 'gcal-date)
+                            (get-text-property (point) 'gcal-start-min))
+                      targets))))))
+      (nreverse targets))))
+
+(defun org-gcal-view-next-row-focus (&optional backward)
+  "Move focus to the next event on the same row.  With BACKWARD move
+to the previous one instead.  Used for <left>/<right> in day view
+when the current row holds more than one concurrent event side by
+side in lanes."
+  (interactive)
+  (let ((targets (org-gcal-view--row-targets)))
+    (unless (> (length targets) 1)
+      (user-error "Only one event on this row"))
+    (let* ((cur-file (get-text-property (point) 'gcal-file))
+           (cur-pos (get-text-property (point) 'gcal-pos))
+           (idx (cl-position-if
+                 (lambda (tgt)
+                   (and (equal (nth 1 tgt) cur-file)
+                        (equal (nth 2 tgt) cur-pos)))
+                 targets))
+           (next-idx (and idx (+ idx (if backward -1 1)))))
+      (if (or (null next-idx) (< next-idx 0) (>= next-idx (length targets)))
+          (user-error "At %s event on this row" (if backward "first" "last"))
+        (let ((tgt (nth next-idx targets)))
+          (org-gcal-view--focus-at (car tgt) (or (nth 3 tgt) "")))))))
+
+(defun org-gcal-view--row-has-multiple-events-p ()
+  "Return non-nil if point is on an event and its row has others."
+  (and (get-text-property (point) 'gcal-pos)
+       (> (length (org-gcal-view--row-targets)) 1)))
+
 (defun org-gcal-view-right ()
   "Move focus to the next day's event in week view.
-In day/month view, go to the next period instead."
+In day view, move to the next event on the same row when the row
+holds more than one concurrent event; otherwise (and in month view)
+go to the next period."
   (interactive)
-  (if (eq org-gcal-view-current-view 'week)
-      (org-gcal-view-next-day-focus)
-    (org-gcal-view-next)))
+  (cond
+   ((eq org-gcal-view-current-view 'week) (org-gcal-view-next-day-focus))
+   ((and (eq org-gcal-view-current-view 'day)
+         (org-gcal-view--row-has-multiple-events-p))
+    (org-gcal-view-next-row-focus))
+   (t (org-gcal-view-next))))
 
 (defun org-gcal-view-left ()
   "Move focus to the previous day's event in week view.
-In day/month view, go to the previous period instead."
+In day view, move to the previous event on the same row when the
+row holds more than one concurrent event; otherwise (and in month
+view) go to the previous period."
   (interactive)
-  (if (eq org-gcal-view-current-view 'week)
-      (org-gcal-view-previous-day-focus)
-    (org-gcal-view-previous)))
+  (cond
+   ((eq org-gcal-view-current-view 'week) (org-gcal-view-previous-day-focus))
+   ((and (eq org-gcal-view-current-view 'day)
+         (org-gcal-view--row-has-multiple-events-p))
+    (org-gcal-view-next-row-focus 'backward))
+   (t (org-gcal-view-previous))))
 
 (defun org-gcal-view-jump-to-date ()
   "Prompt for a date via a calendar popup and jump to it.
