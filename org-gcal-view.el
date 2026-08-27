@@ -316,43 +316,65 @@ to a 60 minute duration, never shorter than 30 minutes."
               (buffer-file-name (marker-buffer org-clock-marker)))
        (= pos (marker-position org-clock-marker))))
 
-(defun org-gcal-view--blocks-in-file (file date-pred)
-  "Collect event blocks from FILE for dates accepted by DATE-PRED.
-DATE-PRED receives a \"YYYY-MM-DD\" string.  Each block is
-\(START-MINS END-MINS TITLE KIND FILE POS CLOCKED-MINUTES LIVE-P
-DATE ALL-DAY-P), sorted by start time.  Sources checked per entry:
-SCHEDULED, DEADLINE, then the first active timestamp in the body."
+(defun org-gcal-view--blocks-in-file (file dates)
+  "Collect event blocks from FILE for any date string in DATES.
+Each block is \(START-MINS END-MINS TITLE KIND FILE POS
+CLOCKED-MINUTES LIVE-P DATE ALL-DAY-P), sorted by start time.
+Sources checked per entry: SCHEDULED, DEADLINE, then the first
+active timestamp in the body.
+
+Visits FILE with `find-file-noselect' rather than re-reading it into
+a throwaway buffer, so repeated calls reuse the buffer Emacs already
+has open.  More importantly, this runs on every single day/week/
+month navigation, so instead of `org-map-entries' walking every
+heading in FILE (thousands, in a large notes file, almost none of
+them relevant), it jumps straight to buffer positions that could
+plausibly hold one of DATES via a literal regexp search, then
+resolves only those headings the normal way.  A candidate whose
+actual planning info turns out not to match DATES (e.g. the hit was
+an unrelated inactive timestamp, or a body timestamp shadowed by a
+SCHEDULED on another date) is filtered out exactly as
+`org-map-entries' would have, so results are identical - just much
+cheaper to reach for large files."
   (let ((blocks '()))
-    (when (and file (file-exists-p file))
-      (with-temp-buffer
-        (delay-mode-hooks (org-mode))
-        (insert-file-contents file)
-        (org-with-point-at 1
-          (org-map-entries
-           (lambda ()
-             (let* ((pos (point))
-                    (ts-str (or (org-entry-get (point) "SCHEDULED")
-                                (org-entry-get (point) "DEADLINE")
-                                (org-entry-get (point) "TIMESTAMP")))
-                    (parsed (org-gcal-view--parse-ts-str ts-str)))
-               (when parsed
-                 (let* ((date-str (format "%04d-%02d-%02d"
-                                          (nth 0 parsed)
-                                          (nth 1 parsed)
-                                          (nth 2 parsed))))
-                   (when (funcall date-pred date-str)
-                     (let* ((title (or (org-entry-get (point) "ITEM") "?"))
-                            (kind (org-gcal-view--timestamp-kind
-                                   (ignore-errors (org-get-tags))))
-                            (clocked (if org-gcal-view-show-clocking
-                                         (ignore-errors
-                                           (org-gcal-view--clocked-minutes))
-                                       0))
-                            (live (org-gcal-view--live-clock-p file pos)))
-                       (push (list (nth 3 parsed) (nth 4 parsed)
-                                   title kind file pos clocked live
-                                   date-str (nth 5 parsed))
-                             blocks)))))))))))
+    (when (and file dates (file-exists-p file))
+      (with-current-buffer (find-file-noselect file)
+        (save-excursion
+          (org-with-wide-buffer
+           (goto-char (point-min))
+           (let ((re (concat "[<[]" (regexp-opt dates)))
+                 (seen (make-hash-table :test 'eq)))
+             (while (re-search-forward re nil t)
+               (let ((match-end (match-end 0)))
+                 (unless (org-before-first-heading-p)
+                   (org-back-to-heading t)
+                   (let ((pos (point)))
+                     (unless (gethash pos seen)
+                       (puthash pos t seen)
+                       (let* ((ts-str (or (org-entry-get pos "SCHEDULED")
+                                          (org-entry-get pos "DEADLINE")
+                                          (org-entry-get pos "TIMESTAMP")))
+                              (parsed (org-gcal-view--parse-ts-str ts-str)))
+                         (when parsed
+                           (let ((date-str (format "%04d-%02d-%02d"
+                                                   (nth 0 parsed)
+                                                   (nth 1 parsed)
+                                                   (nth 2 parsed))))
+                             (when (member date-str dates)
+                               (let* ((title (or (org-entry-get pos "ITEM") "?"))
+                                      (kind (org-gcal-view--timestamp-kind
+                                             (ignore-errors (org-get-tags pos))))
+                                      (clocked (if org-gcal-view-show-clocking
+                                                   (ignore-errors
+                                                     (org-with-point-at pos
+                                                       (org-gcal-view--clocked-minutes)))
+                                                 0))
+                                      (live (org-gcal-view--live-clock-p file pos)))
+                                 (push (list (nth 3 parsed) (nth 4 parsed)
+                                             title kind file pos clocked live
+                                             date-str (nth 5 parsed))
+                                       blocks)))))))))
+                 (goto-char match-end))))))))
     (sort blocks (lambda (a b) (< (car a) (car b))))))
 
 (defun org-gcal-view--collect-blocks (date-str)
@@ -361,9 +383,7 @@ SCHEDULED, DEADLINE, then the first active timestamp in the body."
     (dolist (file (org-agenda-files))
       (setq blocks
             (append blocks
-                    (org-gcal-view--blocks-in-file
-                     file
-                     (lambda (d) (string= d date-str))))))
+                    (org-gcal-view--blocks-in-file file (list date-str)))))
     (sort blocks (lambda (a b) (< (car a) (car b))))))
 
 (defun org-gcal-view--collect-week-blocks (start-date)
@@ -375,8 +395,7 @@ in day order."
                          (org-gcal-view--date-add-days start-date i)))
          (by-date (mapcar (lambda (d) (cons d '())) dates)))
     (dolist (file (org-agenda-files))
-      (dolist (b (org-gcal-view--blocks-in-file
-                  file (lambda (d) (member d dates))))
+      (dolist (b (org-gcal-view--blocks-in-file file dates))
         (when-let ((cell (assoc (nth 8 b) by-date)))
           (push b (cdr cell)))))
     (dolist (cell by-date)
@@ -387,16 +406,12 @@ in day order."
 (defun org-gcal-view--month-event-days (year month)
   "Return a hash table of YYYY-MM-DD -> t for days with events
 in YEAR/MONTH, scanning each agenda file once."
-  (let ((days (make-hash-table :test 'equal))
-        (prefix (format "%04d-%02d" year month))
-        (last (calendar-last-day-of-month month year)))
+  (let* ((days (make-hash-table :test 'equal))
+         (last (calendar-last-day-of-month month year))
+         (dates (cl-loop for d from 1 to last
+                        collect (format "%04d-%02d-%02d" year month d))))
     (dolist (file (org-agenda-files))
-      (dolist (b (org-gcal-view--blocks-in-file
-                  file
-                  (lambda (d)
-                    (and (string-prefix-p prefix d)
-                         (let ((n (string-to-number (substring d 8))))
-                           (<= 1 n last))))))
+      (dolist (b (org-gcal-view--blocks-in-file file dates))
         (puthash (nth 8 b) t days)))
     days))
 

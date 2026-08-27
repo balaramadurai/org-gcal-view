@@ -151,6 +151,17 @@ file, and run BODY."
       (should (equal (get-text-property (point) 'gcal-title) "Event A"))
       (should-error (org-gcal-view-left) :type 'user-error))))
 
+(ert-deftest org-gcal-view-test-collect-blocks-scheduled-shadows-body-timestamp ()
+  ;; The fast-path scan in `org-gcal-view--blocks-in-file' finds
+  ;; candidates by searching for the raw date string anywhere in the
+  ;; file, which would also match a body timestamp under an entry
+  ;; SCHEDULED for a different date.  SCHEDULED must still win.
+  (org-gcal-view-test-with-agenda-file
+      "* Shadowed Entry\n  SCHEDULED: <2026-08-01 Sat>\n  See also <2026-08-27 Thu 10:00> for context.\n* Real Entry\n  <2026-08-27 Thu 09:00-10:00>\n"
+    (let ((blocks (org-gcal-view--collect-blocks "2026-08-27")))
+      (should (= (length blocks) 1))
+      (should (equal (nth 2 (car blocks)) "Real Entry")))))
+
 (ert-deftest org-gcal-view-test-right-falls-back-to-next-day-when-single-event ()
   (org-gcal-view-test-with-agenda-file
       "* Solo Event\n  <2026-08-27 Thu 09:00-10:00>\n"
