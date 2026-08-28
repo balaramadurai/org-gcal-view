@@ -930,33 +930,49 @@ table (test `eq') tracking, across the whole week render, which
 blocks have already had their title row rendered - checked here
 (and updated) rather than comparing MINS to the block's exact start
 minute, since that need not land on a slot boundary.  The title
-shows once per block, on its first visible row."
-  (let ((b (cl-find-if (lambda (x)
-                         (and (<= (nth 0 x) mins) (< mins (nth 1 x))))
-                       blocks)))
-    (if b
-        (concat (propertize
-                 " " 'face
-                 (org-gcal-view--kind-stripe-face (nth 3 b) (nth 10 b)))
-                (propertize
-                 (concat " "
-                         (if (not (gethash b titled))
-                             (progn
-                               (puthash b t titled)
-                               (org-gcal-view--truncate
-                                (or (nth 2 b) "") (- col-width 2)))
-                           (make-string (- col-width 2) ?\s)))
-                 'face (org-gcal-view--combine-faces
-                        (org-gcal-view--kind-block-face
-                         (nth 3 b) (nth 7 b) (nth 10 b))
-                        (org-gcal-view--cancelled-p (nth 11 b)))
-                 'help-echo (org-gcal-view--block-tip b)
-                 'gcal-file (nth 4 b)
-                 'gcal-pos (nth 5 b)
-                 'gcal-title (or (nth 2 b) "")
-                 'gcal-date date
-                 'gcal-start-min (nth 0 b)
-                 'mouse-face 'highlight))
+shows once per block, on its first visible row.
+
+When multiple blocks overlap at this time slot, shows the first
+block's title with a \"+n\" indicator (e.g. \"+2\") appended if
+space permits, and the help-echo lists all overlapping events."
+  (let ((overlapping (cl-remove-if-not
+                      (lambda (x)
+                        (and (<= (nth 0 x) mins) (< mins (nth 1 x))))
+                      blocks)))
+    (if overlapping
+        (let* ((b (car overlapping))
+               (extra-count (length (cdr overlapping)))
+               (indicator (if (> extra-count 0)
+                              (format " +%d" extra-count)
+                            ""))
+               (indicator-len (length indicator))
+               (title-space (- col-width 2 indicator-len))
+               (all-tips (mapconcat #'org-gcal-view--block-tip
+                                    overlapping
+                                    "\n---\n")))
+          (concat (propertize
+                   " " 'face
+                   (org-gcal-view--kind-stripe-face (nth 3 b) (nth 10 b)))
+                  (propertize
+                   (concat " "
+                           (if (not (gethash b titled))
+                               (progn
+                                 (puthash b t titled)
+                                 (org-gcal-view--truncate
+                                  (or (nth 2 b) "") title-space))
+                             (make-string title-space ?\s))
+                           indicator)
+                   'face (org-gcal-view--combine-faces
+                          (org-gcal-view--kind-block-face
+                           (nth 3 b) (nth 7 b) (nth 10 b))
+                          (org-gcal-view--cancelled-p (nth 11 b)))
+                   'help-echo all-tips
+                   'gcal-file (nth 4 b)
+                   'gcal-pos (nth 5 b)
+                   'gcal-title (or (nth 2 b) "")
+                   'gcal-date date
+                   'gcal-start-min (nth 0 b)
+                   'mouse-face 'highlight)))
       (propertize (make-string col-width ?\s)
                   'face (if (string= date today)
                             'org-gcal-view-today-highlight

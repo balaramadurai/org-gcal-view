@@ -498,5 +498,45 @@ file, and run BODY."
         (should found)
         (should (org-gcal-view-test-has-strikethrough-p (plist-get found 'face)))))))
 
+;; ------------------------------------------------------------
+;; Week view overlapping events with "+n" indicator
+;; ------------------------------------------------------------
+
+(ert-deftest org-gcal-view-test-week-view-overlapping-shows-plus-indicator ()
+  ;; When multiple events overlap at the same time in week view, show
+  ;; the first event's title with a "+n" indicator appended.
+  (org-gcal-view-test-with-agenda-file
+      "* Meeting A\n  <2026-08-27 Thu 10:00-11:00>\n* Meeting B\n  <2026-08-27 Thu 10:00-11:00>\n* Meeting C\n  <2026-08-27 Thu 10:30-11:00>\n"
+    (org-gcal-view-week-view "2026-08-27")
+    (with-current-buffer org-gcal-view-buffer-name
+      (goto-char (point-min))
+      (let ((found-plus nil))
+        (while (< (point) (point-max))
+          (let ((line (buffer-substring-no-properties (line-beginning-position) (line-end-position))))
+            ;; Look for "+2" or "+1" in a line that also contains "Meeting A"
+            (when (and (string-match "Meeting A" line)
+                       (string-match "\\+[0-9]" line))
+              (setq found-plus t)))
+          (forward-line))
+        (should found-plus)))))
+
+(ert-deftest org-gcal-view-test-week-view-overlapping-help-echo-lists-all ()
+  ;; The help-echo on an overlapping slot should list all events.
+  (org-gcal-view-test-with-agenda-file
+      "* Meeting A\n  <2026-08-27 Thu 10:00-11:00>\n* Meeting B\n  <2026-08-27 Thu 10:00-11:00>\n"
+    (org-gcal-view-week-view "2026-08-27")
+    (with-current-buffer org-gcal-view-buffer-name
+      (goto-char (point-min))
+      (let ((found-tooltip nil))
+        (while (and (not found-tooltip) (< (point) (point-max)))
+          (when (equal "Meeting A" (get-text-property (point) 'gcal-title))
+            (let ((tip (get-text-property (point) 'help-echo)))
+              (when (and tip
+                         (string-match-p "Meeting A" tip)
+                         (string-match-p "Meeting B" tip))
+                (setq found-tooltip t))))
+          (forward-char))
+        (should found-tooltip)))))
+
 (provide 'org-gcal-view-test)
 ;;; org-gcal-view-test.el ends here
