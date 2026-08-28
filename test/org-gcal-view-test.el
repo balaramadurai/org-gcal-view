@@ -149,19 +149,22 @@ file, and run BODY."
 (ert-deftest org-gcal-view-test-day-view-uses-category-color ()
   (let ((org-gcal-view-category-colors '(("Entrepreneur" . "#4CAF50"))))
     (org-gcal-view-test-with-agenda-file
-        ;; A non-hour-aligned start avoids the hairline face that
-        ;; `org-gcal-view--render-day' layers on top of hour rows,
-        ;; which would otherwise turn `face' into a list of two faces.
+        ;; Starts at 09:30 (half-hour mark), so the row will have the
+        ;; faint hairline face layered on top of the block face.
         "* Pitch\n  SCHEDULED: <2026-08-27 Thu 09:30-10:00>\n  :PROPERTIES:\n  :CATEGORY: Entrepreneur\n  :END:\n"
       (org-gcal-view-day-view "2026-08-27")
       (with-current-buffer org-gcal-view-buffer-name
         ;; The target position lands on the block's leading stripe
         ;; character (background-only face); the block body's own
-        ;; face, one character further in, carries the full
-        ;; background+foreground category color.
+        ;; face, one character further in, carries the category color
+        ;; plus the faint rule face layered via add-face-text-property.
         (goto-char (1+ (caar (org-gcal-view--event-targets))))
-        (should (equal (get-text-property (point) 'face)
-                       (list :background "#4CAF50" :foreground "#1a1a2e")))))))
+        (let ((face (get-text-property (point) 'face)))
+          ;; Face is a list: (category-color-plist rule-face-symbol)
+          (should (listp face))
+          (should (equal (car face)
+                         (list :background "#4CAF50" :foreground "#1a1a2e")))
+          (should (eq (cadr face) 'org-gcal-view-rule-faint)))))))
 
 ;; ------------------------------------------------------------
 ;; Work / Personal filter ("P")

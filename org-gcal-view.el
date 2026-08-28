@@ -708,9 +708,13 @@ count adapts so every event stays visible."
                     (concat line-str
                             (make-string (- grid-w (string-width line-str))
                                          ?\s))))
-            (when at-hour
-              (add-face-text-property 0 (length line-str)
-                                      'org-gcal-view-rule t line-str))
+            ;; Hour marks get a prominent hairline, half-hour marks get a faint one
+            (cond (at-hour
+                   (add-face-text-property 0 (length line-str)
+                                           'org-gcal-view-rule t line-str))
+                  (t
+                   (add-face-text-property 0 (length line-str)
+                                           'org-gcal-view-rule-faint t line-str)))
             (insert line-str "\n")
             (setq slot-idx (1+ slot-idx)))))
       (org-gcal-view--current-time-overlay
