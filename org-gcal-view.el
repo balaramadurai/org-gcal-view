@@ -847,7 +847,7 @@ so it never covers events."
                                 (concat line-str
                                         (org-gcal-view--week-cell
                                          blocks mins date today col-width
-                                         titled))))
+                                         titled slot))))
                         (when (< (string-width line-str) grid-w)
                           (setq line-str
                                 (concat line-str
@@ -927,7 +927,7 @@ if any (see `org-gcal-view--kind-block-face')."
               ('work "\nwork") ('life "\nlife")
               ('habit "\nhabit") (_ "")))))
 
-(defun org-gcal-view--week-cell (blocks mins date today col-width titled)
+(defun org-gcal-view--week-cell (blocks mins date today col-width titled slot)
   "Return one week-view grid cell for slot MINS on DATE.
 BLOCKS is that day's block list; TODAY highlights empty cells for
 the current date.  COL-WIDTH is the column width.  TITLED is a hash
@@ -935,17 +935,22 @@ table (test `eq') tracking, across the whole week render, which
 blocks have already had their title row rendered - checked here
 (and updated) rather than comparing MINS to the block's exact start
 minute, since that need not land on a slot boundary.  The title
-shows once per block, on its first visible row.
+shows once per block, on its first visible row.  SLOT is the slot
+duration in minutes, used to detect the last row of a block.
 
 When multiple blocks overlap at this time slot, shows the first
 block's title with a \"+n\" indicator (e.g. \"+2\") appended if
-space permits, and the help-echo lists all overlapping events."
+space permits, and the help-echo lists all overlapping events.
+
+The last row of each block gets an underline for visual separation."
   (let ((overlapping (cl-remove-if-not
                       (lambda (x)
                         (and (<= (nth 0 x) mins) (< mins (nth 1 x))))
                       blocks)))
     (if overlapping
         (let* ((b (car overlapping))
+               (end-mins (nth 1 b))
+               (is-last-row (>= (+ mins slot) end-mins))
                (extra-count (length (cdr overlapping)))
                (indicator (if (> extra-count 0)
                               (format " +%d" extra-count)
@@ -954,7 +959,14 @@ space permits, and the help-echo lists all overlapping events."
                (title-space (- col-width 2 indicator-len))
                (all-tips (mapconcat #'org-gcal-view--block-tip
                                     overlapping
-                                    "\n---\n")))
+                                    "\n---\n"))
+               (base-face (org-gcal-view--combine-faces
+                           (org-gcal-view--kind-block-face
+                            (nth 3 b) (nth 7 b) (nth 10 b))
+                           (org-gcal-view--cancelled-p (nth 11 b))))
+               (cell-face (if is-last-row
+                              (list base-face '(:underline t))
+                            base-face)))
           (concat (propertize
                    " " 'face
                    (org-gcal-view--kind-stripe-face (nth 3 b) (nth 10 b)))
@@ -967,10 +979,7 @@ space permits, and the help-echo lists all overlapping events."
                                   (or (nth 2 b) "") title-space))
                              (make-string title-space ?\s))
                            indicator)
-                   'face (org-gcal-view--combine-faces
-                          (org-gcal-view--kind-block-face
-                           (nth 3 b) (nth 7 b) (nth 10 b))
-                          (org-gcal-view--cancelled-p (nth 11 b)))
+                   'face cell-face
                    'help-echo all-tips
                    'gcal-file (nth 4 b)
                    'gcal-pos (nth 5 b)
