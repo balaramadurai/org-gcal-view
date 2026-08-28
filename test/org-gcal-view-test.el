@@ -440,5 +440,60 @@ file, and run BODY."
           (org-gcal-view--focus-at cell))
         (should (equal (car messages) "2026-08-15"))))))
 
+;; ------------------------------------------------------------
+;; Cancelled events with strikethrough
+;; ------------------------------------------------------------
+
+(defun org-gcal-view-test-has-strikethrough-p (face-prop)
+  "Check if FACE-PROP (single face or list of faces) contains strike-through."
+  (let ((faces (if (listp face-prop) face-prop (list face-prop))))
+    (cl-some (lambda (f)
+               (and (listp f) (plist-get f :strike-through)))
+             faces)))
+
+(ert-deftest org-gcal-view-test-cancelled-event-has-strikethrough ()
+  ;; Cancelled events (TODO state "CANCELLED") should be collected with
+  ;; the correct TODO state.  Non-cancelled events should not have CANCELLED.
+  (org-gcal-view-test-with-agenda-file
+      "#+TODO: TODO CANCELLED | DONE\n* TODO Regular Event\n  <2026-08-27 Thu 09:00-10:00>\n* CANCELLED Cancelled Event\n  <2026-08-27 Thu 11:00-12:00>\n"
+    (let* ((blocks (org-gcal-view--collect-blocks "2026-08-27"))
+           (regular (cl-find-if (lambda (b) (string= (nth 2 b) "Regular Event")) blocks))
+           (cancelled (cl-find-if (lambda (b) (string= (nth 2 b) "Cancelled Event")) blocks)))
+      (should regular)
+      (should cancelled)
+      (should-not (string= (nth 11 regular) "CANCELLED"))
+      (should (string= (nth 11 cancelled) "CANCELLED")))))
+
+(ert-deftest org-gcal-view-test-cancelled-day-view-strikethrough ()
+  (org-gcal-view-test-with-agenda-file
+      "#+TODO: TODO CANCELLED | DONE\n* CANCELLED Cancelled Meeting\n  <2026-08-27 Thu 09:00-10:00>\n"
+    (org-gcal-view-day-view "2026-08-27")
+    (with-current-buffer org-gcal-view-buffer-name
+      (goto-char (point-min))
+      (let ((has-strikethrough nil))
+        (while (< (point) (point-max))
+          ;; Check if any position with this title has strikethrough
+          (when (and (equal "Cancelled Meeting" (get-text-property (point) 'gcal-title))
+                     (org-gcal-view-test-has-strikethrough-p
+                      (get-text-property (point) 'face)))
+            (setq has-strikethrough t))
+          (forward-char))
+        (should has-strikethrough)))))
+
+(ert-deftest org-gcal-view-test-cancelled-week-view-strikethrough ()
+  (org-gcal-view-test-with-agenda-file
+      "#+TODO: TODO CANCELLED | DONE\n* CANCELLED Cancelled Task\n  <2026-08-27 Thu 14:00-15:00>\n"
+    (org-gcal-view-week-view "2026-08-27")
+    (with-current-buffer org-gcal-view-buffer-name
+      (goto-char (point-min))
+      (let ((found nil))
+        (while (and (not found) (< (point) (point-max)))
+          ;; Search for the title text property, not just any line containing the text
+          (when (equal "Cancelled Task" (get-text-property (point) 'gcal-title))
+            (setq found (text-properties-at (point))))
+          (forward-char))
+        (should found)
+        (should (org-gcal-view-test-has-strikethrough-p (plist-get found 'face)))))))
+
 (provide 'org-gcal-view-test)
 ;;; org-gcal-view-test.el ends here

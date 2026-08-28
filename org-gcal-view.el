@@ -312,6 +312,17 @@ to a 60 minute duration, never shorter than 30 minutes."
   (let ((s (if (stringp str) str (if str (format "%s" str) ""))))
     (truncate-string-to-width s width 0 ?\s)))
 
+(defun org-gcal-view--cancelled-p (todo-state)
+  "Return non-nil if TODO-STATE indicates a cancelled event."
+  (and todo-state (string= todo-state "CANCELLED")))
+
+(defun org-gcal-view--combine-faces (base-face cancelled-p)
+  "Combine BASE-FACE with strikethrough if CANCELLED-P is non-nil.
+Returns a face specification suitable for use with the `face' text property."
+  (if cancelled-p
+      (list base-face '(:strike-through t))
+    base-face))
+
 ;; ============================================================
 ;; * Event Collection
 ;; ============================================================
@@ -358,9 +369,9 @@ listed there counts as Personal."
 (defun org-gcal-view--blocks-in-file (file dates)
   "Collect event blocks from FILE for any date string in DATES.
 Each block is \(START-MINS END-MINS TITLE KIND FILE POS
-CLOCKED-MINUTES LIVE-P DATE ALL-DAY-P CATEGORY), sorted by start
-time.  Sources checked per entry: SCHEDULED, DEADLINE, then the first
-active timestamp in the body.
+CLOCKED-MINUTES LIVE-P DATE ALL-DAY-P CATEGORY TODO-STATE), sorted by
+start time.  Sources checked per entry: SCHEDULED, DEADLINE, then the
+first active timestamp in the body.
 
 Visits FILE with `find-file-noselect' rather than re-reading it into
 a throwaway buffer, so repeated calls reuse the buffer Emacs already
@@ -404,6 +415,7 @@ cheaper to reach for large files."
                                          (org-entry-get pos "CATEGORY")))
                                (let* ((title (or (org-entry-get pos "ITEM") "?"))
                                       (category (org-entry-get pos "CATEGORY"))
+                                      (todo-state (org-entry-get pos "TODO"))
                                       (kind (org-gcal-view--timestamp-kind
                                              (ignore-errors (org-get-tags pos))))
                                       (clocked (if org-gcal-view-show-clocking
@@ -414,7 +426,7 @@ cheaper to reach for large files."
                                       (live (org-gcal-view--live-clock-p file pos)))
                                  (push (list (nth 3 parsed) (nth 4 parsed)
                                              title kind file pos clocked live
-                                             date-str (nth 5 parsed) category)
+                                             date-str (nth 5 parsed) category todo-state)
                                        blocks)))))))))
                  (goto-char match-end))))))))
     (sort blocks (lambda (a b) (< (car a) (car b))))))
@@ -523,12 +535,16 @@ DATE is the day (YYYY-MM-DD) this chip is shown under."
          (pos (nth 5 b))
          (live (nth 7 b))
          (category (nth 10 b))
+         (todo-state (nth 11 b))
+         (cancelled-p (org-gcal-view--cancelled-p todo-state))
          (txt (concat
                (propertize
                 " " 'face (org-gcal-view--kind-stripe-face kind category))
                (propertize
                 (org-gcal-view--truncate title (max 1 (1- width)))
-                'face (org-gcal-view--kind-block-face kind live category)
+                'face (org-gcal-view--combine-faces
+                       (org-gcal-view--kind-block-face kind live category)
+                       cancelled-p)
                 'help-echo (format "%s\nall-day%s"
                                    title
                                    (if live " [clocking]" ""))))))
@@ -586,6 +602,8 @@ carries the full name and details."
          (clocked (org-gcal-view--format-clocked clocked-mins))
          (live (nth 7 b))
          (category (nth 10 b))
+         (todo-state (nth 11 b))
+         (cancelled-p (org-gcal-view--cancelled-p todo-state))
          (wide (>= lw 24))
          (body
           (when top
@@ -617,7 +635,9 @@ carries the full name and details."
                        (concat " "
                                (org-gcal-view--truncate
                                 body (- lw 2)))
-                       'face (org-gcal-view--kind-block-face kind live category)
+                       'face (org-gcal-view--combine-faces
+                              (org-gcal-view--kind-block-face kind live category)
+                              cancelled-p)
                        'help-echo tip))))
     (add-text-properties 0 (length txt)
                          (list 'gcal-file file 'gcal-pos pos
@@ -922,8 +942,10 @@ shows once per block, on its first visible row."
                                (org-gcal-view--truncate
                                 (or (nth 2 b) "") (- col-width 2)))
                            (make-string (- col-width 2) ?\s)))
-                 'face (org-gcal-view--kind-block-face
-                        (nth 3 b) (nth 7 b) (nth 10 b))
+                 'face (org-gcal-view--combine-faces
+                        (org-gcal-view--kind-block-face
+                         (nth 3 b) (nth 7 b) (nth 10 b))
+                        (org-gcal-view--cancelled-p (nth 11 b)))
                  'help-echo (org-gcal-view--block-tip b)
                  'gcal-file (nth 4 b)
                  'gcal-pos (nth 5 b)

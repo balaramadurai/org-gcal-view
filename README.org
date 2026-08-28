@@ -15,6 +15,7 @@ A Google Calendar-inspired interface for Emacs, built on top of `org-agenda-file
 - ⏱️ Clocking integration (total clocked time + live clock indicator)
 - ✏️ Event creation and editing straight from the calendar view
 - 🎨 Per-CATEGORY block colors, and a Work/Personal/all filter cycle
+- ❌ Cancelled events (CANCELLED TODO state) are shown with strikethrough
 
 ** Configuration
 :PROPERTIES:
