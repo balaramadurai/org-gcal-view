@@ -444,7 +444,7 @@ file, and run BODY."
         (should (equal (car messages) "2026-08-15"))))))
 
 ;; ------------------------------------------------------------
-;; Cancelled events with strikethrough
+;; Cancelled and DONE events with strikethrough
 ;; ------------------------------------------------------------
 
 (defun org-gcal-view-test-has-strikethrough-p (face-prop)
@@ -497,6 +497,22 @@ file, and run BODY."
           (forward-char))
         (should found)
         (should (org-gcal-view-test-has-strikethrough-p (plist-get found 'face)))))))
+
+(ert-deftest org-gcal-view-test-done-event-has-strikethrough ()
+  ;; DONE events should also render with strikethrough, just like CANCELLED.
+  (org-gcal-view-test-with-agenda-file
+      "#+TODO: TODO | DONE\n* DONE Completed Task\n  <2026-08-27 Thu 14:00-15:00>\n"
+    (org-gcal-view-day-view "2026-08-27")
+    (with-current-buffer org-gcal-view-buffer-name
+      (goto-char (point-min))
+      (let ((has-strikethrough nil))
+        (while (< (point) (point-max))
+          (when (and (equal "Completed Task" (get-text-property (point) 'gcal-title))
+                     (org-gcal-view-test-has-strikethrough-p
+                      (get-text-property (point) 'face)))
+            (setq has-strikethrough t))
+          (forward-char))
+        (should has-strikethrough)))))
 
 ;; ------------------------------------------------------------
 ;; Week view overlapping events with "+n" indicator

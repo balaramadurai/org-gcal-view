@@ -119,9 +119,9 @@ disable the \"P\" work/personal/all cycle (it then does nothing)."
   "The label shown at half-hours (faint).")
 
 (defface org-gcal-view-rule
-  '((((background dark)) (:underline (:color "#262C35" :position 0)))
-    (t (:underline (:color "#E2E6EB" :position 0))))
-  "A hairline drawn with an underline at exact hours.")
+  '((((background dark)) (:underline (:color "#3A4149" :position 0)))
+    (t (:underline (:color "#C5CDD4" :position 0))))
+  "A prominent hairline drawn with an underline at exact hours.")
 
 (defface org-gcal-view-rule-faint
   '((((background dark)) (:underline (:color "#1F242C" :position 0)))
@@ -312,16 +312,22 @@ to a 60 minute duration, never shorter than 30 minutes."
   (let ((s (if (stringp str) str (if str (format "%s" str) ""))))
     (truncate-string-to-width s width 0 ?\s)))
 
-(defun org-gcal-view--cancelled-p (todo-state)
-  "Return non-nil if TODO-STATE indicates a cancelled event."
-  (and todo-state (string= todo-state "CANCELLED")))
+(defun org-gcal-view--strikethrough-p (todo-state)
+  "Return non-nil if TODO-STATE should be shown with strikethrough.
+Both CANCELLED and DONE tasks are shown with strikethrough."
+  (and todo-state (or (string= todo-state "CANCELLED")
+                      (string= todo-state "DONE"))))
 
-(defun org-gcal-view--combine-faces (base-face cancelled-p)
-  "Combine BASE-FACE with strikethrough if CANCELLED-P is non-nil.
+(defun org-gcal-view--combine-faces (base-face todo-state)
+  "Combine BASE-FACE with strikethrough based on TODO-STATE.
+CANCELLED events get red strikethrough, DONE events get default strikethrough.
 Returns a face specification suitable for use with the `face' text property."
-  (if cancelled-p
-      (list base-face '(:strike-through t))
-    base-face))
+  (cond
+   ((and todo-state (string= todo-state "CANCELLED"))
+    (list base-face '(:strike-through "#e74c3c")))
+   ((and todo-state (string= todo-state "DONE"))
+    (list base-face '(:strike-through t)))
+   (t base-face)))
 
 ;; ============================================================
 ;; * Event Collection
@@ -347,6 +353,25 @@ Returns a face specification suitable for use with the `face' text property."
                                (match-string 1))))))
       total)))
 
+(defun org-gcal-view--clock-times ()
+  "Return (START-TIME END-TIME) for the most recent CLOCK entry at point.
+START-TIME and END-TIME are formatted as \"HH:MM\" strings.
+For a running clock, END-TIME is nil.
+Returns nil if no CLOCK entries exist."
+  (save-excursion
+    (org-back-to-heading t)
+    (let ((end (org-entry-end-position))
+          (start-time nil)
+          (end-time nil))
+      ;; Look for CLOCK: [date time]--[date time] or CLOCK: [date time]
+      (when (re-search-forward
+             "^[ \t]*CLOCK: \\[.*? \\([0-9]+:[0-9]+\\)\\]\\(?:--\\[.*? \\([0-9]+:[0-9]+\\)\\]\\)?"
+             end t)
+        (setq start-time (match-string 1))
+        (setq end-time (match-string 2)))
+      (when start-time
+        (list start-time end-time)))))
+
 (defun org-gcal-view--live-clock-p (file pos)
   "Return non-nil if the running clock is on entry at POS in FILE."
   (and (markerp org-clock-marker)
@@ -369,9 +394,10 @@ listed there counts as Personal."
 (defun org-gcal-view--blocks-in-file (file dates)
   "Collect event blocks from FILE for any date string in DATES.
 Each block is \(START-MINS END-MINS TITLE KIND FILE POS
-CLOCKED-MINUTES LIVE-P DATE ALL-DAY-P CATEGORY TODO-STATE), sorted by
-start time.  Sources checked per entry: SCHEDULED, DEADLINE, then the
-first active timestamp in the body.
+CLOCKED-MINUTES LIVE-P DATE ALL-DAY-P CATEGORY TODO-STATE CLOCK-TIMES),
+sorted by start time.  CLOCK-TIMES is (START-TIME END-TIME) from the
+most recent CLOCK entry, or nil if no clocking.  Sources checked per
+entry: SCHEDULED, DEADLINE, then the first active timestamp in the body.
 
 Visits FILE with `find-file-noselect' rather than re-reading it into
 a throwaway buffer, so repeated calls reuse the buffer Emacs already
@@ -423,10 +449,15 @@ cheaper to reach for large files."
                                                      (org-with-point-at pos
                                                        (org-gcal-view--clocked-minutes)))
                                                  0))
-                                      (live (org-gcal-view--live-clock-p file pos)))
+                                      (live (org-gcal-view--live-clock-p file pos))
+                                      (clock-times (when org-gcal-view-show-clocking
+                                                     (ignore-errors
+                                                       (org-with-point-at pos
+                                                         (org-gcal-view--clock-times))))))
                                  (push (list (nth 3 parsed) (nth 4 parsed)
                                              title kind file pos clocked live
-                                             date-str (nth 5 parsed) category todo-state)
+                                             date-str (nth 5 parsed) category todo-state
+                                             clock-times)
                                        blocks)))))))))
                  (goto-char match-end))))))))
     (sort blocks (lambda (a b) (< (car a) (car b))))))
@@ -536,7 +567,6 @@ DATE is the day (YYYY-MM-DD) this chip is shown under."
          (live (nth 7 b))
          (category (nth 10 b))
          (todo-state (nth 11 b))
-         (cancelled-p (org-gcal-view--cancelled-p todo-state))
          (txt (concat
                (propertize
                 " " 'face (org-gcal-view--kind-stripe-face kind category))
@@ -544,7 +574,7 @@ DATE is the day (YYYY-MM-DD) this chip is shown under."
                 (org-gcal-view--truncate title (max 1 (1- width)))
                 'face (org-gcal-view--combine-faces
                        (org-gcal-view--kind-block-face kind live category)
-                       cancelled-p)
+                       todo-state)
                 'help-echo (format "%s\nall-day%s"
                                    title
                                    (if live " [clocking]" ""))))))
@@ -603,7 +633,7 @@ carries the full name and details."
          (live (nth 7 b))
          (category (nth 10 b))
          (todo-state (nth 11 b))
-         (cancelled-p (org-gcal-view--cancelled-p todo-state))
+         (clock-times (nth 12 b))
          (wide (>= lw 24))
          (body
           (when top
@@ -614,9 +644,12 @@ carries the full name and details."
                                (/ start-mins 60) (% start-mins 60)
                                (/ end-mins 60) (% end-mins 60))
                        'face 'org-gcal-view-blk-time))
-                    (when clocked
-                      (propertize (format " [%s]" clocked)
-                                  'face 'org-gcal-view-blk-time)))))
+                    (when (and clock-times (car clock-times))
+                      (propertize
+                       (format " 🕐%s-%s"
+                               (car clock-times)
+                               (or (cadr clock-times) "now"))
+                       'face 'org-gcal-view-blk-time)))))
          (tip (format "%s\n%02d:%02d–%02d:%02d%s%s"
                       title
                       (/ start-mins 60) (% start-mins 60)
@@ -637,7 +670,7 @@ carries the full name and details."
                                 body (- lw 2)))
                        'face (org-gcal-view--combine-faces
                               (org-gcal-view--kind-block-face kind live category)
-                              cancelled-p)
+                              todo-state)
                        'help-echo tip))))
     (add-text-properties 0 (length txt)
                          (list 'gcal-file file 'gcal-pos pos
@@ -963,7 +996,7 @@ The last row of each block gets an underline for visual separation."
                (base-face (org-gcal-view--combine-faces
                            (org-gcal-view--kind-block-face
                             (nth 3 b) (nth 7 b) (nth 10 b))
-                           (org-gcal-view--cancelled-p (nth 11 b))))
+                           (nth 11 b)))
                (cell-face (if is-last-row
                               (list base-face '(:underline t))
                             base-face)))

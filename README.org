@@ -13,10 +13,10 @@ A Google Calendar-inspired interface for Emacs, built on top of `org-agenda-file
 - 🎯 Focus navigation between events / month day cells, mouse support -
   moving between events shows the same file/outline-path breadcrumb
   org-agenda shows in the echo area, e.g. ~spirelia.org/Meetings~
-- ⏱️ Clocking integration (total clocked time + live clock indicator)
+- ⏱️ Clocking integration: shows 🕐HH:MM-HH:MM clock times on events
 - ✏️ Event creation and editing straight from the calendar view
 - 🎨 Per-CATEGORY block colors, and a Work/Personal/all filter cycle
-- ❌ Cancelled events (CANCELLED TODO state) are shown with strikethrough
+- ❌ CANCELLED events shown with red strikethrough, DONE events with default strikethrough
 
 ** Configuration
 :PROPERTIES:
